@@ -92,6 +92,7 @@ class PersonCard(Vertical, can_focus=True):
             cells_width=16,
             cells_height=10,
             size="w185",
+            kind=self.kind,
             classes="card-poster",
         )
         short_name = (
@@ -100,11 +101,11 @@ class PersonCard(Vertical, can_focus=True):
             else f"{self.person_name[:18]}…"
         )
         if self.kind == "director":
-            subtitle_str = "[bold #58a6ff]🎬 Director[/]"
+            subtitle_str = "[bold #58a6ff]Director[/]"
         else:
             raw_role = (self.character or "Actor").strip()
             short_role = raw_role if len(raw_role) <= 18 else f"{raw_role[:16]}…"
-            subtitle_str = f"[dim]🎭 {short_role}[/]"
+            subtitle_str = f"[bold #58a6ff]as[/] [dim]{short_role}[/]"
 
         yield Static(
             f"[bold #e6edf3]{short_name}[/]\n{subtitle_str}",

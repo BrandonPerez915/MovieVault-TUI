@@ -20,7 +20,8 @@ from textual.worker import get_current_worker
 
 from services.CatalogService import MovieSummary
 from services.QueryService import QueryResult, execute_query
-from tui.screens.user.movie_detail_screen import MovieDetailScreen
+from tui.screens.user.movie_detail import MovieDetailScreen
+from tui.toast import show_success_toast
 from tui.widgets.movie_card import MovieCard
 from tui.widgets.movie_grid import MovieGrid
 from tui.widgets.state_message import StateMessage
@@ -105,18 +106,22 @@ class SearchResultsScreen(Screen):
 
         if not summaries:
             banner.update("")
+            query_desc = ", ".join(
+                f"{k}='{v}'" for k, v in self._params.items() if k != "page" and v
+            )
+            target_label = f" ({query_desc})" if query_desc else ""
             state.show_empty(
-                "No movies matched these criteria.",
-                "Try broadening the decade range or modifying search keywords.",
+                f"We couldn't get information for your search{target_label} in local MongoDB or TMDB.",
+                "Please check your input, spelling, or try broadening your filters.",
             )
             return
 
+        state.clear_state()
         if result.data_source == "tmdb_cached":
-            state.show_success(
-                "✨ Found new movies on TMDB and saved them to your catalog."
+            show_success_toast(
+                self,
+                "✨ Found new movies on TMDB and saved them to your catalog.",
             )
-        else:
-            state.clear_state()
 
         banner.update(
             f"[bold #79c0ff]{result.total_count} movies found[/]  "

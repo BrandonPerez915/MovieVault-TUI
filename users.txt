@@ -1,0 +1,33 @@
+# MovieVault Demo Users
+# Format: username | email | password
+#------------------------------------------------------------
+cinephile_alex | cinephile_alex@movievault.demo | Alex!Vault01
+sofia_noir | sofia_noir@movievault.demo | Sofia!Vault02
+marco_scifi | marco_scifi@movievault.demo | Marco!Vault03
+elena_frames | elena_frames@movievault.demo | Elena!Vault04
+lucas_reel | lucas_reel@movievault.demo | Lucas!Vault05
+valeria_cut | valeria_cut@movievault.demo | Valeria!Vault06
+diego_imdb | diego_imdb@movievault.demo | Diego!Vault07
+camila_lens | camila_lens@movievault.demo | Camila!Vault08
+mateo_imax | mateo_imax@movievault.demo | Mateo!Vault09
+lucia_indie | lucia_indie@movievault.demo | Lucia!Vault10
+nicolas_35mm | nicolas_35mm@movievault.demo | Nicolas!Vault11
+paula_oscar | paula_oscar@movievault.demo | Paula!Vault12
+andres_plot | andres_plot@movievault.demo | Andres!Vault13
+fernanda_cam | fernanda_cam@movievault.demo | Fernanda!Vault14
+gabriel_arc | gabriel_arc@movievault.demo | Gabriel!Vault15
+renata_score | renata_score@movievault.demo | Renata!Vault16
+tomas_noir | tomas_noir@movievault.demo | Tomas!Vault17
+mariana_cine | mariana_cine@movievault.demo | Mariana!Vault18
+santiago_pov | santiago_pov@movievault.demo | Santiago!Vault19
+daniela_film | daniela_film@movievault.demo | Daniela!Vault20
+emilio_edit | emilio_edit@movievault.demo | Emilio!Vault21
+natalia_cast | natalia_cast@movievault.demo | Natalia!Vault22
+sebastian_reel | sebastian_reel@movievault.demo | Sebastian!Vault23
+karla_drama | karla_drama@movievault.demo | Karla!Vault24
+rodrigo_shot | rodrigo_shot@movievault.demo | Rodrigo!Vault25
+andrea_scene | andrea_scene@movievault.demo | Andrea!Vault26
+javier_spool | javier_spool@movievault.demo | Javier!Vault27
+monica_stage | monica_stage@movievault.demo | Monica!Vault28
+ricardo_crew | ricardo_crew@movievault.demo | Ricardo!Vault29
+claudia_take | claudia_take@movievault.demo | Claudia!Vault30

@@ -24,16 +24,16 @@ from tui.modals import (
     EditProfileModal,
     FollowListModal,
     ReviewMovieModal,
-    VisitProfileModal,
-    WrappedModal,
 )
+from tui.toast import show_success_toast
 from tui.widgets.movie_card import MovieCard
 from tui.widgets.movie_grid import MovieGrid
 from tui.widgets.person_card import populate_carousel_bar
+from tui.widgets.poster import PosterImage
 from tui.widgets.state_message import StateMessage
 
 
-class ProfileView(Vertical):
+class ProfileView(VerticalScroll):
     """Instagram-style user profile component with stats, actions, and sub-tabs."""
 
     class ProfileUpdated(Message):
@@ -60,34 +60,47 @@ class ProfileView(Vertical):
         self._watched_page = 1
         self._reviews_cache: List[Dict[str, Any]] = []
         self._rev_cards_per_row: int = 2
+        self._lists_cache: List[UserListSummary] = []
+        self._list_offsets: Dict[str, int] = {}
+        self._list_row_widgets: Dict[int, tuple[Horizontal, Button, Button]] = {}
+        self._movie_cards_per_row: int = 3
 
     def compose(self) -> ComposeResult:
         with Vertical(id="profile-hero-card", classes="profile-hero-card"):
+            with Horizontal(id="prof-avatar-row", classes="profile-avatar-row"):
+                yield PosterImage(
+                    poster_url="",
+                    title="Profile",
+                    cells_width=16,
+                    cells_height=10,
+                    size="w185",
+                    kind="person",
+                    id="prof-avatar",
+                )
             yield Static("", id="prof-identity-banner")
+            yield Static("", id="prof-joined-banner")
+            with Horizontal(id="prof-follow-row", classes="profile-follow-row"):
+                yield Button("Followers (0)", id="btn-prof-followers", classes="profile-stat-link")
+                yield Button("Following (0)", id="btn-prof-following", classes="profile-stat-link")
             with Horizontal(id="prof-stats-row", classes="profile-stats-row"):
-                yield Static("Reviews: 0", id="stat-reviews", classes="profile-stat-pill")
-                yield Static("Watched: 0", id="stat-watched", classes="profile-stat-pill")
-                yield Static("Lists: 0", id="stat-lists", classes="profile-stat-pill")
-                yield Button("Followers (0)", id="btn-prof-followers", classes="profile-stat-btn")
-                yield Button("Following (0)", id="btn-prof-following", classes="profile-stat-btn")
+                yield Static("Reviews: 0", id="stat-reviews", classes="profile-stat-text")
+                yield Static("Watched: 0", id="stat-watched", classes="profile-stat-text")
+                yield Static("Lists: 0", id="stat-lists", classes="profile-stat-text")
 
             with Horizontal(id="prof-actions-row", classes="profile-actions-row"):
-                yield Button("🔄 Refresh", variant="default", id="btn-prof-refresh")
                 yield Button("+ Follow", variant="success", id="btn-prof-follow-toggle")
-                yield Button("✏ Edit Profile", variant="primary", id="btn-prof-edit")
-                yield Button("📊 View Wrapped", variant="warning", id="btn-prof-wrapped")
-                yield Button("🔍 Visit @User", variant="default", id="btn-prof-visit")
-                yield Button("✍ Write Review", variant="success", id="btn-prof-write-review")
+                yield Button("Edit Profile", variant="primary", id="btn-prof-edit")
+                yield Button("View Wrapped", variant="warning", id="btn-prof-wrapped")
 
         yield StateMessage(id="prof-state-msg")
 
         with TabbedContent(id="profile-subtabs"):
             with TabPane("💬 Reviews", id="subtab-prof-reviews"):
-                yield VerticalScroll(id="prof-reviews-scroll", classes="profile-subtab-scroll")
+                yield Vertical(id="prof-reviews-scroll", classes="profile-subtab-body")
             with TabPane("🎬 Watched Movies", id="subtab-prof-watched"):
                 yield MovieGrid(page_size=12, id="prof-watched-grid")
             with TabPane("📋 Lists", id="subtab-prof-lists"):
-                yield VerticalScroll(id="prof-lists-scroll", classes="profile-subtab-scroll")
+                yield Vertical(id="prof-lists-scroll", classes="profile-subtab-body")
 
     def on_mount(self) -> None:
         if self._target_username:
@@ -99,6 +112,11 @@ class ProfileView(Vertical):
             self._rev_cards_per_row = new_per_row
             if self._reviews_cache:
                 self._render_reviews_tab(self._reviews_cache)
+        new_movie_per_row = self._calc_movie_cards_per_row()
+        if new_movie_per_row != self._movie_cards_per_row:
+            self._movie_cards_per_row = new_movie_per_row
+            for idx in range(len(self._lists_cache)):
+                self._update_list_carousel_row(idx)
 
     def _calc_review_cards_per_row(self) -> int:
         try:
@@ -107,6 +125,14 @@ class ProfileView(Vertical):
             term_width = 120
         usable_width = max(43, term_width - 8)
         return max(1, usable_width // 43)
+
+    def _calc_movie_cards_per_row(self) -> int:
+        try:
+            term_width = self.app.size.width
+        except Exception:
+            term_width = 120
+        usable_width = max(23, term_width - 24)
+        return max(1, usable_width // 23)
 
     def _is_own_profile(self) -> bool:
         session = AuthService().current_session
@@ -133,14 +159,10 @@ class ProfileView(Vertical):
         follow_btn = self.query_one("#btn-prof-follow-toggle", Button)
         edit_btn = self.query_one("#btn-prof-edit", Button)
         wrapped_btn = self.query_one("#btn-prof-wrapped", Button)
-        visit_btn = self.query_one("#btn-prof-visit", Button)
-        write_btn = self.query_one("#btn-prof-write-review", Button)
 
         follow_btn.display = not own
         edit_btn.display = own
         wrapped_btn.display = own
-        visit_btn.display = own
-        write_btn.display = own
 
         if not own and self._profile is not None:
             if self._profile.is_following:
@@ -198,14 +220,23 @@ class ProfileView(Vertical):
         self._profile = profile
         own = self._is_own_profile()
         session = AuthService().current_session
-        display_email = profile.email or (session.email if own and session else "")
-        email_line = f"  •  [dim]{display_email}[/]" if (own and display_email) else ""
-        joined_line = f"  •  [dim]Joined {profile.created_at}[/]" if profile.created_at else ""
         badge = " [bold #3fb950](You)[/]" if own else ""
+        avatar_url = profile.avatar_url or (session.avatar_url if own and session else "")
 
-        self.query_one("#prof-identity-banner", Static).update(
-            f"[bold #58a6ff]👤 @{profile.username}[/]{badge}{email_line}{joined_line}"
+        self.query_one("#prof-avatar", PosterImage).set_poster(
+            avatar_url,
+            title=profile.username,
         )
+        self.query_one("#prof-identity-banner", Static).update(
+            f"[bold #58a6ff]@{profile.username}[/]{badge}"
+        )
+        joined_banner = self.query_one("#prof-joined-banner", Static)
+        if profile.created_at:
+            joined_banner.display = True
+            joined_banner.update(f"[dim]Joined {profile.created_at}[/]")
+        else:
+            joined_banner.display = False
+            joined_banner.update("")
 
         self.query_one("#stat-reviews", Static).update(
             f"[bold]{max(profile.reviews_count, reviews_total)}[/] Reviews"
@@ -235,7 +266,7 @@ class ProfileView(Vertical):
 
     def _render_reviews_tab(self, reviews: List[Dict[str, Any]]) -> None:
         self._reviews_cache = list(reviews)
-        scroll = self.query_one("#prof-reviews-scroll", VerticalScroll)
+        scroll = self.query_one("#prof-reviews-scroll", Vertical)
         scroll.remove_children()
         if not reviews:
             scroll.mount(
@@ -265,12 +296,7 @@ class ProfileView(Vertical):
 
             action_buttons: List[Button] = [
                 Button(
-                    "🎬 Open",
-                    name=m_key,
-                    classes="btn-open-movie-inline",
-                ),
-                Button(
-                    f"♥ Liked ({likes})" if user_liked else f"♡ Like ({likes})",
+                    f"Liked ({likes})" if user_liked else f"Like ({likes})",
                     variant="error" if user_liked else "default",
                     name=m_title,
                     classes="btn-prof-like-review",
@@ -279,7 +305,7 @@ class ProfileView(Vertical):
             if own:
                 action_buttons.append(
                     Button(
-                        "✏ Edit",
+                        "Edit Review",
                         variant="warning",
                         name=m_title,
                         classes="btn-prof-edit-review",
@@ -287,9 +313,18 @@ class ProfileView(Vertical):
                 )
 
             card = Vertical(
-                Static(
-                    f"[bold #58a6ff]{m_title}[/]  [bold #f0883e]★ {rating:.1f}[/]  "
-                    f"[bold #3fb950]♥ {likes}[/]  [dim]{created}[/]"
+                Horizontal(
+                    Button(
+                        m_title,
+                        name=m_key,
+                        classes="review-movie-title-link",
+                    ),
+                    Static(
+                        f"  [bold #f0883e]★ {rating:.1f}[/]  "
+                        f"[bold #3fb950]♥ {likes}[/]  [dim]{created}[/]",
+                        classes="review-card-meta",
+                    ),
+                    classes="review-card-header",
                 ),
                 Static(content, classes="review-item-body"),
                 Horizontal(*action_buttons, classes="review-card-actions"),
@@ -308,7 +343,10 @@ class ProfileView(Vertical):
             )
 
     def _render_lists_tab(self, lists: List[UserListSummary]) -> None:
-        scroll = self.query_one("#prof-lists-scroll", VerticalScroll)
+        self._lists_cache = list(lists)
+        self._movie_cards_per_row = self._calc_movie_cards_per_row()
+        self._list_row_widgets.clear()
+        scroll = self.query_one("#prof-lists-scroll", Vertical)
         scroll.remove_children()
         if not lists:
             scroll.mount(
@@ -319,7 +357,8 @@ class ProfileView(Vertical):
             )
             return
 
-        for lst in lists:
+        for idx, lst in enumerate(lists):
+            self._list_offsets.setdefault(lst.name, 0)
             card = Vertical(classes="list-item-card")
             scroll.mount(card)
             card.mount(
@@ -327,29 +366,85 @@ class ProfileView(Vertical):
                     f"[bold #d2a8ff]📋 {lst.name}[/]  [dim]({lst.movies_count} movies)[/]"
                 )
             )
+            if lst.description:
+                card.mount(Static(f"[dim]{lst.description}[/]"))
             if not lst.movies:
                 card.mount(Static("[dim]Empty list[/]"))
             else:
-                chips = Horizontal(classes="chips-bar")
-                card.mount(chips)
-                for m in lst.movies[:20]:
-                    year_str = f" ({m.release_year})" if m.release_year else ""
-                    chips.mount(
-                        Button(
-                            f"🎬 {m.title}{year_str}",
-                            name=m.movie_id or m.title,
-                            classes="person-chip-btn btn-open-movie-inline",
-                        )
-                    )
+                row = Horizontal(classes="carousel-row")
+                card.mount(row)
+                btn_prev = Button(
+                    "<",
+                    name=f"prev|{idx}",
+                    classes="carousel-nav-btn prof-list-nav",
+                )
+                bar = Horizontal(classes="chips-bar prof-list-bar")
+                btn_next = Button(
+                    ">",
+                    name=f"next|{idx}",
+                    classes="carousel-nav-btn prof-list-nav",
+                )
+                self._list_row_widgets[idx] = (bar, btn_prev, btn_next)
+                row.mount(btn_prev)
+                row.mount(bar)
+                row.mount(btn_next)
+                self._update_list_carousel_row(idx)
+
+    def _update_list_carousel_row(self, idx: int) -> None:
+        if not (0 <= idx < len(self._lists_cache)):
+            return
+        lst = self._lists_cache[idx]
+        if not lst.movies:
+            return
+        widgets = self._list_row_widgets.get(idx)
+        if widgets is None:
+            return
+        bar, btn_prev, btn_next = widgets
+        per_row = self._movie_cards_per_row
+        bar.remove_children()
+
+        max_offset = max(0, len(lst.movies) - per_row)
+        offset = max(0, min(self._list_offsets.get(lst.name, 0), max_offset))
+        self._list_offsets[lst.name] = offset
+
+        show_nav = len(lst.movies) > per_row
+        btn_prev.display = show_nav
+        btn_next.display = show_nav
+        if show_nav:
+            btn_prev.disabled = offset <= 0
+            btn_next.disabled = offset >= max_offset
+
+        cards = [
+            MovieCard(m)
+            for m in lst.movies[offset : offset + per_row]
+        ]
+        populate_carousel_bar(bar, cards, per_row)
+
+    @on(Button.Pressed, ".prof-list-nav")
+    def _on_prof_list_nav(self, event: Button.Pressed) -> None:
+        raw = event.button.name or ""
+        parts = raw.split("|", 1)
+        if len(parts) != 2:
+            return
+        direction, idx_str = parts
+        try:
+            idx = int(idx_str)
+        except ValueError:
+            return
+        if not (0 <= idx < len(self._lists_cache)):
+            return
+        lst = self._lists_cache[idx]
+        cur_offset = self._list_offsets.get(lst.name, 0)
+        if direction == "prev" and cur_offset > 0:
+            self._list_offsets[lst.name] = cur_offset - 1
+            self._update_list_carousel_row(idx)
+        elif direction == "next" and cur_offset + self._movie_cards_per_row < len(lst.movies):
+            self._list_offsets[lst.name] = cur_offset + 1
+            self._update_list_carousel_row(idx)
 
     # =========================================================================
     # INTERACTIONS
     # =========================================================================
-
-    @on(Button.Pressed, "#btn-prof-refresh")
-    def _on_refresh(self) -> None:
-        if self._target_username:
-            self.load_profile(self._target_username)
 
     @on(Button.Pressed, "#btn-prof-follow-toggle")
     def _on_follow_toggle(self) -> None:
@@ -395,24 +490,9 @@ class ProfileView(Vertical):
     @on(Button.Pressed, "#btn-prof-wrapped")
     def _on_open_wrapped(self) -> None:
         if self._target_username:
-            self.app.push_screen(WrappedModal(self._target_username))
+            from tui.screens.user.wrapped import WrappedScreen
 
-    @on(Button.Pressed, "#btn-prof-visit")
-    def _on_visit_profile(self) -> None:
-        def _after(username: Optional[str]) -> None:
-            if username:
-                self._open_user_profile(username)
-
-        self.app.push_screen(VisitProfileModal(), _after)
-
-    @on(Button.Pressed, "#btn-prof-write-review")
-    def _on_write_review(self) -> None:
-        def _after(msg: Optional[str]) -> None:
-            if msg:
-                self.load_profile(self._target_username)
-                self.query_one("#prof-state-msg", StateMessage).show_success(msg)
-
-        self.app.push_screen(ReviewMovieModal(), _after)
+            self.app.push_screen(WrappedScreen(self._target_username))
 
     @on(Button.Pressed, "#btn-prof-followers")
     def _on_open_followers(self) -> None:
@@ -436,14 +516,14 @@ class ProfileView(Vertical):
         )
 
     def _open_user_profile(self, username: str) -> None:
-        from tui.screens.user.profile_screen import ProfileScreen
+        from tui.screens.user.profile import ProfileScreen
 
         self.app.push_screen(ProfileScreen(username))
 
-    @on(Button.Pressed, ".btn-open-movie-inline")
+    @on(Button.Pressed, ".review-movie-title-link")
     def _on_open_movie_btn(self, event: Button.Pressed) -> None:
         if event.button.name:
-            from tui.screens.user.movie_detail_screen import MovieDetailScreen
+            from tui.screens.user.movie_detail import MovieDetailScreen
 
             self.app.push_screen(MovieDetailScreen(event.button.name))
 
@@ -480,7 +560,7 @@ class ProfileView(Vertical):
     @on(MovieCard.Selected)
     def _on_watched_card_selected(self, event: MovieCard.Selected) -> None:
         event.stop()
-        from tui.screens.user.movie_detail_screen import MovieDetailScreen
+        from tui.screens.user.movie_detail import MovieDetailScreen
 
         self.app.push_screen(MovieDetailScreen(event.movie_id or event.title))
 

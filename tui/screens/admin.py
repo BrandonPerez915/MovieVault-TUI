@@ -17,7 +17,7 @@ Includes 3 technical tabs:
 """
 
 import json
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from rich.syntax import Syntax
 from textual import on, work
@@ -57,7 +57,9 @@ from services.QueryService import (
     get_queries_by_module,
 )
 from services.TMDBService import TMDBService
-from tui.screens.help_screen import HelpScreen
+from tui.screens.help import HelpScreen
+from tui.widgets.figlet_header import FigletHeader
+from tui.widgets.loading_spinner import LoadingSpinner
 
 MAX_PARAM_SLOTS = 5
 
@@ -200,7 +202,7 @@ class AdminScreen(Screen):
                             yield Button("▶ Run [Ctrl+E]", variant="success", id="btn-admin-execute")
 
                         with Vertical(id="results-box"):
-                            yield Static(
+                            yield LoadingSpinner(
                                 "📊 RESULTS",
                                 id="admin-results-heading",
                                 classes="panel-heading",
@@ -239,7 +241,7 @@ class AdminScreen(Screen):
                         id="console-editor",
                     )
 
-                    yield Static(
+                    yield LoadingSpinner(
                         "[dim]Select an engine, edit the query, and press 'Run Ad-Hoc Query'.[/]",
                         id="console-status",
                     )
@@ -257,10 +259,11 @@ class AdminScreen(Screen):
             # =================================================================
             with TabPane("📦 Populate TMDB Catalog", id="tab-seed"):
                 with Vertical(id="seed-container"):
-                    yield Static(
-                        "[bold #58a6ff]📦 RECURSIVE BULK POPULATION FROM TMDB (`/movie/popular`)[/]\n"
-                        "[dim]Downloads N popular movies from TMDB and recursively inserts each movie, "
-                        "its directors, and up to 10 main cast members into MongoDB, avoiding duplicates via `tmdb_id`.[/]"
+                    yield FigletHeader(
+                        "TMDB Seeder",
+                        font="smslant",
+                        color="#58a6ff",
+                        subtitle="Downloads N popular movies from TMDB and recursively inserts each movie, its directors, and up to 10 main cast members into MongoDB without duplicates.",
                     )
                     with Horizontal(id="seed-controls-row"):
                         yield Label("Movie count (N):")
@@ -273,7 +276,7 @@ class AdminScreen(Screen):
                         yield Button("🚀 Start Ingestion", variant="success", id="btn-start-seed")
 
                     yield ProgressBar(total=100, show_eta=True, id="seed-progress-bar")
-                    yield Static(
+                    yield LoadingSpinner(
                         "[dim]Ready to start. You can also run `python main.py --seed N` from CLI.[/]",
                         id="seed-summary-status",
                     )
@@ -416,8 +419,8 @@ class AdminScreen(Screen):
         if not self._active_query:
             return
         params = self._collect_params()
-        self.query_one("#admin-results-heading", Static).update(
-            f"⏳ Running {self._active_query.title}..."
+        self.query_one("#admin-results-heading", LoadingSpinner).start_spinner(
+            f"Running {self._active_query.title}..."
         )
         self._execute_req_worker(self._active_query.id, params)
 
@@ -429,7 +432,8 @@ class AdminScreen(Screen):
             self.app.call_from_thread(self._render_result, result)
 
     def _render_result(self, result: QueryResult) -> None:
-        res_heading = self.query_one("#admin-results-heading", Static)
+        res_heading = self.query_one("#admin-results-heading", LoadingSpinner)
+        res_heading.stop_spinner(hide=False)
         res_heading.update(
             f"📊 {result.title} — {len(result.rows)} rows (total: {result.total_count})  │  "
             f"{format_engine_badge(result.database)}  │  ⏱ {result.execution_ms:.2f} ms  │  "
@@ -494,11 +498,22 @@ class AdminScreen(Screen):
     def _run_adhoc_query(self) -> None:
         engine = str(self.query_one("#console-engine-select", Select).value)
         query_text = self.query_one("#console-editor", TextArea).text
-        status_label = self.query_one("#console-status", Static)
+        status_label = self.query_one("#console-status", LoadingSpinner)
+        status_label.start_spinner(f"Executing ad-hoc query in {engine}...")
+        self._execute_adhoc_worker(engine, query_text)
+
+    @work(thread=True, exclusive=True, group="admin-adhoc")
+    def _execute_adhoc_worker(self, engine: str, query_text: str) -> None:
+        worker = get_current_worker()
+        res = execute_raw_query(engine, query_text)
+        if not worker.is_cancelled:
+            self.app.call_from_thread(self._render_adhoc_result, engine, res)
+
+    def _render_adhoc_result(self, engine: str, res: Dict[str, Any]) -> None:
+        status_label = self.query_one("#console-status", LoadingSpinner)
+        status_label.stop_spinner(hide=False)
         table = self.query_one("#console-results-table", DataTable)
         json_out = self.query_one("#console-json-output", Static)
-
-        res = execute_raw_query(engine, query_text)
         table.clear(columns=True)
 
         if not res["ok"]:
@@ -548,8 +563,8 @@ class AdminScreen(Screen):
         log.write(
             f"[bold #58a6ff]▶ Starting recursive ingestion of {n} popular movies from TMDB...[/]"
         )
-        self.query_one("#seed-summary-status", Static).update(
-            f"[bold #58a6ff]⏳ Processing 0 / {n} movies...[/]"
+        self.query_one("#seed-summary-status", LoadingSpinner).start_spinner(
+            f"Processing 0 / {n} movies..."
         )
         self.query_one("#btn-start-seed", Button).disabled = True
         self._seed_worker(n, include_person)
@@ -588,12 +603,14 @@ class AdminScreen(Screen):
         else:
             log.write(f"[bold #f85149]✖ [{curr}/{total}] ERROR:[/] {title}")
 
-        self.query_one("#seed-summary-status", Static).update(
-            f"[bold #58a6ff]⏳ Processing {curr} / {total}:[/] {title}"
+        self.query_one("#seed-summary-status", LoadingSpinner).set_spinner_text(
+            f"Processing {curr} / {total}: {title}"
         )
 
     def _on_seed_complete(self, report: PopulateReport) -> None:
         self.query_one("#btn-start-seed", Button).disabled = False
+        status = self.query_one("#seed-summary-status", LoadingSpinner)
+        status.stop_spinner(hide=False)
         summary = (
             f"[bold #3fb950]✔ POPULATION COMPLETE:[/] Processed: {report.processed}  │  "
             f"New movies: [bold]{report.new_movies}[/]  │  "
@@ -602,7 +619,7 @@ class AdminScreen(Screen):
             f"New directors: [bold]{report.new_directors}[/]  │  "
             f"Errors: {report.errors}"
         )
-        self.query_one("#seed-summary-status", Static).update(summary)
+        status.update(summary)
         self.query_one("#seed-log", RichLog).write(f"\n{summary}")
 
     def action_open_help(self) -> None:

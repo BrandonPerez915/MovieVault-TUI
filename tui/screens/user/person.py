@@ -67,6 +67,7 @@ class PersonScreen(Screen):
                     cells_width=20,
                     cells_height=14,
                     size="w185",
+                    kind=self._kind,
                     id="person-photo",
                 )
                 with Vertical(id="person-meta-box"):
@@ -172,7 +173,7 @@ class PersonScreen(Screen):
 
     @on(MovieCard.Selected)
     def _on_movie_selected(self, event: MovieCard.Selected) -> None:
-        from tui.screens.user.movie_detail_screen import MovieDetailScreen
+        from tui.screens.user.movie_detail import MovieDetailScreen
 
         self.app.push_screen(MovieDetailScreen(event.movie_id or event.title))
 

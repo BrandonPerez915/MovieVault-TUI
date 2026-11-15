@@ -3,12 +3,13 @@ Letterboxd-style interactive movie card (`MovieCard`)
 (backend/tui/widgets/movie_card.py).
 """
 
+from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
 from textual.events import Click
 from textual.message import Message
-from textual.widgets import Static
+from textual.widgets import Button, Static
 
 from services.CatalogService import MovieSummary
 from tui.widgets.poster import PosterImage
@@ -35,9 +36,29 @@ class MovieCard(Vertical, can_focus=True):
         def control(self) -> "MovieCard":
             return self.card
 
-    def __init__(self, movie: MovieSummary, id: str | None = None) -> None:
-        super().__init__(id=id, classes="movie-card")
+    class RemoveRequested(Message):
+        """Message emitted when the user clicks the remove (✖) button on the card."""
+
+        def __init__(self, card: "MovieCard", movie_id: str, title: str) -> None:
+            super().__init__()
+            self.card = card
+            self.movie_id = movie_id
+            self.title = title
+
+        @property
+        def control(self) -> "MovieCard":
+            return self.card
+
+    def __init__(
+        self,
+        movie: MovieSummary,
+        id: str | None = None,
+        removable: bool = False,
+    ) -> None:
+        classes = "movie-card movie-card-removable" if removable else "movie-card"
+        super().__init__(id=id, classes=classes)
         self.movie = movie
+        self._removable = removable
 
     def compose(self) -> ComposeResult:
         yield PosterImage(
@@ -59,6 +80,19 @@ class MovieCard(Vertical, can_focus=True):
             f"[bold #e6edf3]{short_title}[/]\n"
             f"[dim]{year_str}[/]  [bold #f0883e]{rating_str}[/]",
             classes="card-caption",
+        )
+        if self._removable:
+            yield Button("✖", variant="error", classes="movie-card-remove-btn")
+
+    @on(Button.Pressed, ".movie-card-remove-btn")
+    def _on_remove_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        self.post_message(
+            self.RemoveRequested(
+                card=self,
+                movie_id=self.movie.movie_id or self.movie.title,
+                title=self.movie.title,
+            )
         )
 
     def action_select_card(self) -> None:

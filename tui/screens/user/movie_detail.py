@@ -26,9 +26,10 @@ from services.AuthService import AuthService
 from services.CatalogService import CatalogService, MovieDetail
 from services.ProfileService import ProfileService
 from services.QueryService import execute_query
-from tui.modals import ManageListModal, ReviewMovieModal
-from tui.screens.user.person_screen import PersonScreen
-from tui.screens.user.reviews_screen import ReviewsScreen
+from tui.modals import ManageListModal, ReviewMovieModal, SearchReviewsModal
+from tui.screens.user.person import PersonScreen
+from tui.screens.user.reviews import ReviewsScreen
+from tui.toast import show_success_toast
 from tui.widgets.person_card import PersonCard, populate_carousel_bar
 from tui.widgets.poster import PosterImage
 from tui.widgets.state_message import StateMessage
@@ -62,30 +63,31 @@ class MovieDetailScreen(Screen):
         with VerticalScroll(classes="detail-page-scroll"):
             with Horizontal(classes="detail-top-actions"):
                 yield Button("◀ Back [Esc]", variant="default", id="btn-detail-back")
-                yield Button("👁 Mark as Watched", variant="default", id="btn-detail-watched")
-                yield Button("♡ Like (0)", variant="default", id="btn-detail-like")
-                yield Button("✍ Review Movie [Ctrl+N]", variant="success", id="btn-detail-review")
-                yield Button("＋ Add to List [Ctrl+B]", variant="primary", id="btn-detail-list")
-                yield Button("💬 View All Reviews", variant="warning", id="btn-detail-all-reviews")
 
             yield StateMessage(id="detail-state-msg")
 
-            with Horizontal(id="movie-hero-box"):
-                yield PosterImage(
-                    poster_url="",
-                    title=self._movie_key,
-                    cells_width=24,
-                    cells_height=16,
-                    size="w342",
-                    id="detail-poster",
-                )
-                with Vertical(id="movie-meta-box"):
-                    yield Static("", id="detail-title-banner")
-                    yield Static("", id="detail-specs-text")
-                    yield Static("", id="detail-synopsis-text")
+            with Vertical(id="movie-hero-box"):
+                with Horizontal(id="movie-hero-content"):
+                    yield PosterImage(
+                        poster_url="",
+                        title=self._movie_key,
+                        cells_width=24,
+                        cells_height=16,
+                        size="w342",
+                        id="detail-poster",
+                    )
+                    with Vertical(id="movie-meta-box"):
+                        yield Static("", id="detail-title-banner")
+                        yield Static("", id="detail-specs-text")
+                        yield Static("", id="detail-synopsis-text")
+
+                with Horizontal(id="movie-hero-actions", classes="detail-section-actions"):
+                    yield Button("Like (0)", variant="default", id="btn-detail-like")
+                    yield Button("Mark as Watched", variant="default", id="btn-detail-watched")
+                    yield Button("＋ Add to List", variant="primary", id="btn-detail-list")
 
             yield Static(
-                "🎬 DIRECTORS (Press Enter or click to view details):",
+                "DIRECTORS (Click to view details):",
                 classes="panel-heading",
             )
             with Horizontal(classes="carousel-row"):
@@ -94,7 +96,7 @@ class MovieDetailScreen(Screen):
                 yield Button(">", id="btn-dir-next", classes="carousel-nav-btn")
 
             yield Static(
-                "🎭 MAIN CAST (Press Enter or click to view impact & filmography):",
+                "MAIN CAST (Click to view details):",
                 classes="panel-heading",
             )
             with Horizontal(classes="carousel-row"):
@@ -102,11 +104,19 @@ class MovieDetailScreen(Screen):
                 yield Horizontal(id="detail-cast-bar", classes="chips-bar")
                 yield Button(">", id="btn-cast-next", classes="carousel-nav-btn")
 
-            yield Static("💬 FEATURED COMMUNITY REVIEWS:", classes="panel-heading")
+            yield Static("FEATURED COMMUNITY REVIEWS:", classes="panel-heading")
             with Horizontal(classes="carousel-row"):
-                yield Button("<", id="btn-rev-prev", classes="carousel-nav-btn")
+                yield Button("<", id="btn-rev-prev", classes="carousel-nav-btn review-carousel-nav-btn")
                 yield Horizontal(id="detail-reviews-preview", classes="chips-bar")
-                yield Button(">", id="btn-rev-next", classes="carousel-nav-btn")
+                yield Button(">", id="btn-rev-next", classes="carousel-nav-btn review-carousel-nav-btn")
+            with Horizontal(id="detail-reviews-actions", classes="detail-section-actions"):
+                yield Button("Review Movie", variant="success", id="btn-detail-review")
+                yield Button(
+                    "🔎 Search reviews by keyword",
+                    variant="primary",
+                    id="btn-detail-search-reviews",
+                )
+                yield Button("View All Reviews", variant="warning", id="btn-detail-all-reviews")
 
         yield Footer()
 
@@ -203,8 +213,8 @@ class MovieDetailScreen(Screen):
         state = self.query_one("#detail-state-msg", StateMessage)
         if detail is None:
             state.show_empty(
-                f"Movie '{self._movie_key}' was not found.",
-                "Verify MongoDB or TMDB connectivity.",
+                f"We couldn't get information for the movie '{self._movie_key}' in local MongoDB or TMDB.",
+                "Please check the input title or verify your MongoDB and TMDB connection.",
             )
             return
 
@@ -226,25 +236,29 @@ class MovieDetailScreen(Screen):
             watched_btn.label = "✓ Watched"
             watched_btn.variant = "success"
         else:
-            watched_btn.label = "👁 Mark as Watched"
+            watched_btn.label = "Mark as Watched"
             watched_btn.variant = "default"
+        watched_btn.refresh(layout=True)
 
         likes_count = max(detail.likes, int(user_status.get("likes_count") or 0))
         like_btn = self.query_one("#btn-detail-like", Button)
         if user_status.get("liked"):
-            like_btn.label = f"♥ Liked ({likes_count})"
+            like_btn.label = f"Liked ({likes_count})"
             like_btn.variant = "error"
         else:
-            like_btn.label = f"♡ Like ({likes_count})"
+            like_btn.label = f"Like ({likes_count})"
             like_btn.variant = "default"
+        like_btn.refresh(layout=True)
 
         rev_btn = self.query_one("#btn-detail-review", Button)
         if user_status.get("existing_review"):
-            rev_btn.label = "✏ Edit Your Review [Ctrl+N]"
+            rev_btn.label = "Edit Your Review"
             rev_btn.variant = "warning"
         else:
-            rev_btn.label = "✍ Review Movie [Ctrl+N]"
+            rev_btn.label = "Review Movie"
             rev_btn.variant = "success"
+        rev_btn.refresh(layout=True)
+        self.query_one("#movie-hero-actions", Horizontal).refresh(layout=True)
 
         poster = self.query_one("#detail-poster", PosterImage)
         poster.set_poster(detail.poster_url, title=detail.title)
@@ -495,6 +509,16 @@ class MovieDetailScreen(Screen):
     def _on_list(self) -> None:
         self.action_open_list()
 
+    @on(Button.Pressed, "#btn-detail-search-reviews")
+    def _on_search_reviews(self) -> None:
+        title = self._detail.title if self._detail else self._movie_key
+
+        def _after(keywords: Optional[str]) -> None:
+            if keywords is not None:
+                self.app.push_screen(ReviewsScreen(title, initial_keywords=keywords))
+
+        self.app.push_screen(SearchReviewsModal(movie_title=title), _after)
+
     @on(Button.Pressed, "#btn-detail-all-reviews")
     def _on_all_reviews(self) -> None:
         title = self._detail.title if self._detail else self._movie_key
@@ -517,7 +541,7 @@ class MovieDetailScreen(Screen):
 
         def _after(msg: Optional[str]) -> None:
             if msg:
-                self.query_one("#detail-state-msg", StateMessage).show_success(msg)
+                show_success_toast(self, msg)
 
         self.app.push_screen(ManageListModal(movie_title=title, poster_url=poster), _after)
 

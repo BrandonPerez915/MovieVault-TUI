@@ -16,9 +16,9 @@ from textual.binding import Binding
 
 from databases.mongodb import MongoConnection
 from services.CatalogService import CatalogService
-from tui.screens.admin_screen import AdminScreen
-from tui.screens.auth_screen import AuthScreen
-from tui.screens.user.home_screen import HomeScreen
+from tui.screens.admin import AdminScreen
+from tui.screens.auth import AuthScreen
+from tui.screens.user.home import HomeScreen
 
 
 class MovieVaultApp(App):

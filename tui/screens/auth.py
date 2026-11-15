@@ -10,7 +10,8 @@ from textual.screen import Screen
 from textual.widgets import Button, Footer, Input, Label, Static
 
 from services.AuthService import AuthService
-from tui.screens.help_screen import HelpScreen
+from tui.screens.help import HelpScreen
+from tui.widgets.figlet_header import FigletHeader
 
 
 class AuthScreen(Screen):
@@ -34,9 +35,11 @@ class AuthScreen(Screen):
             id="top-bar",
         )
         with Container(id="auth-card"):
-            yield Static(
-                "🔐 MOVIEVAULT — SIGN IN\n"
-                "[dim]Discover movies, write reviews, and curate your lists[/]",
+            yield FigletHeader(
+                "MovieVault",
+                font="slant",
+                color="#58a6ff",
+                subtitle="SIGN IN — Discover movies, write reviews, and curate your lists",
                 id="auth-title",
             )
             yield Static("", id="auth-feedback")
@@ -96,7 +99,7 @@ class AuthScreen(Screen):
         inp_confirm = self.query_one("#input-confirm", Input)
         btn_submit = self.query_one("#btn-submit", Button)
         btn_toggle = self.query_one("#btn-toggle-mode", Button)
-        title = self.query_one("#auth-title", Static)
+        title = self.query_one("#auth-title", FigletHeader)
 
         if self._is_register_mode:
             lbl_email.display = True
@@ -105,9 +108,9 @@ class AuthScreen(Screen):
             inp_confirm.display = True
             btn_submit.label = "Register Account [Enter]"
             btn_toggle.label = "Back to Sign In [Ctrl+R]"
-            title.update(
-                "📝 MOVIEVAULT — CREATE NEW ACCOUNT\n"
-                "[dim]Create your profile to rate movies, follow friends, and organize watchlists[/]"
+            title.set_header(
+                "MovieVault",
+                subtitle="CREATE ACCOUNT — Rate movies, follow friends, and organize watchlists",
             )
         else:
             lbl_email.display = False
@@ -116,9 +119,9 @@ class AuthScreen(Screen):
             inp_confirm.display = False
             btn_submit.label = "Sign In [Enter]"
             btn_toggle.label = "Create Account [Ctrl+R]"
-            title.update(
-                "🔐 MOVIEVAULT — SIGN IN\n"
-                "[dim]Discover movies, write reviews, and curate your lists[/]"
+            title.set_header(
+                "MovieVault",
+                subtitle="SIGN IN — Discover movies, write reviews, and curate your lists",
             )
 
     def action_open_help(self) -> None:

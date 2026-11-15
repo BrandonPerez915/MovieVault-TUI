@@ -50,17 +50,23 @@ from services.QueryService import (
     get_query_by_id,
 )
 from tui.modals import (
+    AddMovieToListModal,
+    ConfirmModal,
     CreateListModal,
     ManageListModal,
     ReviewMovieModal,
     SocialActionModal,
+    UserMenuModal,
     UserSwitchModal,
 )
-from tui.screens.help_screen import HelpScreen
-from tui.screens.user.movie_detail_screen import MovieDetailScreen
-from tui.screens.user.person_screen import PersonScreen
-from tui.screens.user.reviews_screen import ReviewsScreen
-from tui.screens.user.search_results_screen import SearchResultsScreen
+from tui.screens.help import HelpScreen
+from tui.screens.user.movie_detail import MovieDetailScreen
+from tui.screens.user.person import PersonScreen
+from tui.screens.user.query_results import QueryResultsScreen
+from tui.screens.user.reviews import ReviewsScreen
+from tui.screens.user.search_results import SearchResultsScreen
+from tui.toast import show_success_toast
+from tui.widgets.figlet_header import FigletHeader, render_figlet_markup
 from tui.widgets.movie_card import MovieCard
 from tui.widgets.movie_grid import MovieGrid
 from tui.widgets.person_card import populate_carousel_bar
@@ -69,66 +75,46 @@ from tui.widgets.profile_view import ProfileView
 from tui.widgets.state_message import StateMessage
 
 SEARCH_MODES = [
-    ("🎬 Movies by title, decade, and language", "mongo_req_1"),
-    ("🌍 Movies by genre, country, and director", "mongo_req_2"),
-    ("⭐ Movies by rating, director, and decade", "mongo_req_3"),
-    ("📝 Movies by keywords in synopsis", "mongo_req_4"),
-    ("🎭 Movies by actor and/or director", "mongo_req_6"),
-    ("📊 Actor impact analysis and filmography", "mongo_req_7"),
-    ("💬 Movie reviews by keywords", "mongo_req_5"),
+    ("Movies by title, decade, and language", "mongo_req_1"),
+    ("Movies by genre, country, and director", "mongo_req_2"),
+    ("Movies by rating, director, and decade", "mongo_req_3"),
+    ("Movies by keywords in synopsis", "mongo_req_4"),
+    ("Movies by actor and/or director", "mongo_req_6"),
+    ("Actor impact analysis and filmography", "mongo_req_7"),
 ]
 
 DIARY_MODES = [
-    ("👁 Recently watched movies", "cassandra_req_1"),
-    ("🎭 Watched movies filtered by genre", "cassandra_req_2"),
-    ("✍ My published reviews", "cassandra_req_3"),
-    ("★ My reviews by rating range", "cassandra_req_4"),
-    ("💬 Review history for a movie", "cassandra_req_5"),
-    ("♥ Liked reviews", "cassandra_req_6"),
-    ("📋 My movie list activity", "cassandra_req_7"),
-    ("🤝 Followed accounts", "cassandra_req_8"),
+    ("Recently watched movies", "cassandra_req_1"),
+    ("Watched movies filtered by genre", "cassandra_req_2"),
+    ("My published reviews", "cassandra_req_3"),
+    ("My reviews by rating range", "cassandra_req_4"),
+    ("Review history for a movie", "cassandra_req_5"),
+    ("Liked reviews", "cassandra_req_6"),
+    ("My movie list activity", "cassandra_req_7"),
+    ("Followed accounts", "cassandra_req_8"),
 ]
 
 REC_MODES = [
-    ("🤝 Users who liked my favorite review", "dgraph_req_1"),
-    ("🍿 Movies watched by friends in last 7 days", "dgraph_req_2"),
-    ("🎞 Same-genre movies not in my list", "dgraph_req_3"),
-    ("🎬 Movies liked by friends (same director)", "dgraph_req_4"),
-    ("🎭 Movies with actors from films I liked", "dgraph_req_5"),
-    ("👥 Potential friends with shared tastes (≥5 in common)", "dgraph_req_6"),
-    ("📋 Unwatched movies in my list liked by friends", "dgraph_req_7"),
-    ("✨ Movies by recent Actor + Director combo", "dgraph_req_8"),
+    ("Users who liked my favorite review", "dgraph_req_1"),
+    ("Movies watched by friends in last 7 days", "dgraph_req_2"),
+    ("Same-genre movies not in my list", "dgraph_req_3"),
+    ("Movies liked by friends (same director)", "dgraph_req_4"),
+    ("Movies with actors from films I liked", "dgraph_req_5"),
+    ("Potential friends with shared tastes (≥5 in common)", "dgraph_req_6"),
+    ("Unwatched movies in my list liked by friends", "dgraph_req_7"),
+    ("Movies by recent Actor + Director combo", "dgraph_req_8"),
 ]
 
-HOME_ASCII_BANNER = (
-    "[bold #f0883e]╭───────────────╮[/]\n"
-    "[bold #f0883e]│  ◉    ▶    ◉  │[/]\n"
-    "[bold #f0883e]╰───────────────╯[/]\n"
-    "[bold #58a6ff] __  __            _     [/][bold #d2a8ff]__     __          _ _   [/]\n"
-    "[bold #58a6ff]|  \\/  | _____   _(_) ___[/][bold #d2a8ff]\\ \\   / /_ _ _   _| | |_ [/]\n"
-    "[bold #58a6ff]| |\\/| |/ _ \\ \\ / / |/ _ \\[/][bold #d2a8ff]\\ \\ / / _` | | | | | __|[/]\n"
-    "[bold #58a6ff]| |  | | (_) \\ V /| |  __/[/][bold #d2a8ff] \\ V / (_| | |_| | | |_ [/]\n"
-    "[bold #58a6ff]|_|  |_|\\___/ \\_/ |_|\\___|[/][bold #d2a8ff]  \\_/ \\__,_|\\__,_|_|\\__|[/]\n"
-    "[dim]Your Personal Film Catalog, Reviews & Discovery Vault[/]"
+HOME_ASCII_BANNER = render_figlet_markup(
+    "MovieVault",
+    font="slant",
+    color="#58a6ff",
+    subtitle="Your Personal Film Catalog, Reviews & Discovery Vault",
 )
 
 
-def _build_home_header(session: Optional[UserSession]) -> str:
-    user_str = (
-        f"[bold #79c0ff]👤 @{session.username}[/]"
-        if session
-        else "[bold #f0883e]👤 Explorer Mode[/]"
-    )
-    posters_on = PosterService().enabled
-    poster_badge = (
-        "[bold #3fb950]🖼 Posters: YES [Ctrl+P][/]"
-        if posters_on
-        else "[bold #d29922]🖼 Posters: TEXT MODE [Ctrl+P][/]"
-    )
-    return (
-        f"[bold #58a6ff]🎬 MOVIEVAULT[/]  │  {user_str}  │  "
-        f"{poster_badge}  │  [dim]F1: Help  •  Ctrl+N: Review  •  Ctrl+B: Lists[/]"
-    )
+def _format_user_menu_label(session: Optional[UserSession]) -> str:
+    return f"@{session.username} ▾" if session else "Explorer ▾"
 
 
 class HomeScreen(Screen):
@@ -153,20 +139,19 @@ class HomeScreen(Screen):
         self._genre_sections: List[Tuple[str, List[MovieSummary]]] = []
         self._genre_offsets: Dict[str, int] = {}
         self._cards_per_row: int = 3
-        self._diary_rows: List[Dict[str, Any]] = []
-        self._rec_rows: List[Dict[str, Any]] = []
         self._user_lists: List[UserListSummary] = []
         self._selected_list_name: str = ""
 
     def compose(self) -> ComposeResult:
         session = AuthService().current_session
-        yield Static(_build_home_header(session), id="top-bar")
+        with Horizontal(id="top-bar"):
+            yield Static("[bold #58a6ff]MOVIEVAULT[/]", id="top-bar-brand")
+            yield Static("", id="top-bar-spacer")
+            yield Button(_format_user_menu_label(session), id="btn-user-menu")
 
         with TabbedContent(id="user-tabs"):
-            # =================================================================
-            # TAB 1: HOME / NETFLIX-STYLE GENRE & FOR YOU CAROUSELS
-            # =================================================================
-            with TabPane("🍿 Home", id="tab-home"):
+            # -------------------- TAB 1: HOME --------------------
+            with TabPane("Home", id="tab-home"):
                 with VerticalScroll(id="home-netflix-scroll", classes="detail-page-scroll"):
                     with Vertical(id="home-hero-header"):
                         yield Static(HOME_ASCII_BANNER, id="home-ascii-banner")
@@ -181,22 +166,10 @@ class HomeScreen(Screen):
                                 id="btn-home-quick-search",
                             )
 
-                    with Horizontal(classes="section-toolbar"):
-                        yield Static(
-                            "[bold #79c0ff]🍿 BROWSE BY GENRE & FOR YOU[/]  "
-                            "[dim](Enter or click a poster to view details)[/]"
-                        )
-                        yield Button("🔄 Refresh", variant="default", id="btn-home-refresh")
-                        yield Button(
-                            "📥 Fetch 20 Popular from TMDB",
-                            variant="primary",
-                            id="btn-home-seed-quick",
-                        )
-
                     yield StateMessage(id="home-state-msg")
 
                     yield Static(
-                        "✨ FOR YOU — RECOMMENDED MOVIES:",
+                        "FOR YOU — RECOMMENDED MOVIES:",
                         classes="panel-heading",
                     )
                     with Horizontal(classes="carousel-row"):
@@ -206,111 +179,122 @@ class HomeScreen(Screen):
 
                     yield Vertical(id="home-genres-container")
 
-            # =================================================================
-            # TAB 2: SEARCH MOVIES AND TALENT (CLEAN FORM)
-            # =================================================================
-            with TabPane("🔍 Search", id="tab-search"):
+            # -------------------- TAB 2: EXPLORE (MOVIES, ACTIVITY, RECOMMENDATIONS) --------------------
+            with TabPane("Explore", id="tab-explore"):
                 with VerticalScroll(classes="tab-page-scroll"):
-                    with Vertical(id="search-form-card"):
-                        yield Static(
-                            "[bold #58a6ff]🔍 MOVIE, TALENT, AND REVIEW SEARCH[/]\n"
-                            "[dim]Choose how to search. If a movie is not in your local catalog, it will automatically be fetched from TMDB.[/]"
-                        )
-                        yield Label("Search criteria:")
-                        yield Select(
-                            SEARCH_MODES,
-                            value="mongo_req_1",
-                            allow_blank=False,
-                            id="search-mode-select",
-                        )
-                        yield Vertical(id="search-dynamic-fields")
-                        with Horizontal(classes="form-submit-row"):
-                            yield Button(
-                                "🔍 Search Now [Enter]",
-                                variant="success",
-                                id="btn-submit-search",
+                    with Vertical(id="explore-container"):
+                        with Horizontal(id="explore-selector-bar"):
+                            yield Label("Section:")
+                            yield Select(
+                                [
+                                    ("Movies", "movies"),
+                                    ("Activity", "activity"),
+                                    ("Recommendations", "recs"),
+                                ],
+                                value="movies",
+                                allow_blank=False,
+                                id="explore-section-select",
                             )
 
-            # =================================================================
-            # TAB 3: MY DIARY AND ACTIVITY
-            # =================================================================
-            with TabPane("📖 My Diary", id="tab-diary"):
-                with Vertical(classes="tab-page-container"):
-                    with Vertical(classes="filter-card"):
-                        with Horizontal(classes="section-toolbar"):
-                            yield Label("Activity to query:")
+                        with Vertical(id="search-form-card", classes="query-form-card"):
+                            yield FigletHeader(
+                                "Movies",
+                                font="slant",
+                                color="#58a6ff",
+                                subtitle="Choose how to search. If a movie is not in your local catalog, it will automatically be fetched from TMDB.",
+                            )
+                            yield Label("Search criteria:", classes="field-label")
+                            yield Select(
+                                SEARCH_MODES,
+                                value="mongo_req_1",
+                                allow_blank=False,
+                                id="search-mode-select",
+                                classes="form-mode-select",
+                            )
+                            yield Vertical(id="search-dynamic-fields")
+                            with Horizontal(classes="form-submit-row"):
+                                yield Button(
+                                    "🔍 Search Now [Enter]",
+                                    variant="success",
+                                    id="btn-submit-search",
+                                )
+
+                        with Vertical(id="diary-form-card", classes="query-form-card"):
+                            yield FigletHeader(
+                                "Activity",
+                                font="slant",
+                                color="#58a6ff",
+                                subtitle="Choose an activity query for your active session. Results open in a dedicated view.",
+                            )
+                            yield Label("Activity to query:", classes="field-label")
                             yield Select(
                                 DIARY_MODES,
                                 value="cassandra_req_1",
                                 allow_blank=False,
                                 id="diary-mode-select",
+                                classes="form-mode-select",
                             )
-                            yield Button(
-                                "📖 View Activity",
-                                variant="primary",
-                                id="btn-run-diary",
+                            yield Vertical(id="diary-dynamic-fields")
+                            with Horizontal(classes="form-submit-row"):
+                                yield Button(
+                                    "📖 View Activity [Enter]",
+                                    variant="success",
+                                    id="btn-run-diary",
+                                )
+
+                        with Vertical(id="rec-form-card", classes="query-form-card"):
+                            yield FigletHeader(
+                                "Recommendations",
+                                font="smslant",
+                                color="#58a6ff",
+                                subtitle="Choose a recommendation criterion based on your profile and friends. Results open in a dedicated view.",
                             )
-                        yield Horizontal(id="diary-dynamic-fields", classes="inline-fields-row")
-
-                    yield StateMessage(id="diary-state-msg")
-                    yield DataTable(id="diary-table")
-
-            # =================================================================
-            # TAB 4: FOR YOU (RECOMMENDATIONS)
-            # =================================================================
-            with TabPane("✨ For You", id="tab-recs"):
-                with Vertical(classes="tab-page-container"):
-                    with Vertical(classes="filter-card"):
-                        with Horizontal(classes="section-toolbar"):
-                            yield Label("Recommendation type:")
+                            yield Label("Recommendation type:", classes="field-label")
                             yield Select(
                                 REC_MODES,
                                 value="dgraph_req_2",
                                 allow_blank=False,
                                 id="rec-mode-select",
+                                classes="form-mode-select",
                             )
-                            yield Button(
-                                "✨ Get Recommendations",
-                                variant="primary",
-                                id="btn-run-recs",
-                            )
-                        yield Horizontal(id="rec-dynamic-fields", classes="inline-fields-row")
+                            yield Vertical(id="rec-dynamic-fields")
+                            with Horizontal(classes="form-submit-row"):
+                                yield Button(
+                                    "✨ Get Recommendations [Enter]",
+                                    variant="success",
+                                    id="btn-run-recs",
+                                )
 
-                    yield StateMessage(id="rec-state-msg")
-                    yield DataTable(id="rec-table")
-
-            # =================================================================
-            # TAB 5: MY LISTS
-            # =================================================================
-            with TabPane("📋 My Lists", id="tab-lists"):
+            # -------------------- TAB 5: MY LISTS --------------------
+            with TabPane("Lists", id="tab-lists"):
                 with Vertical(classes="tab-page-container"):
-                    with Horizontal(classes="section-toolbar"):
-                        yield Static("[bold #79c0ff]📋 MY PERSONAL LISTS[/]")
-                        yield Button("＋ New List", variant="success", id="btn-lists-create")
-                        yield Button("＋ Add Movie [Ctrl+B]", variant="primary", id="btn-lists-add-movie")
-                        yield Button("🗑 Delete List", variant="error", id="btn-lists-delete")
-                        yield Button("🔄 Refresh", variant="default", id="btn-lists-refresh")
-
                     yield StateMessage(id="lists-state-msg")
 
                     with Horizontal(id="lists-workspace"):
                         with Vertical(id="lists-sidebar"):
                             yield Static("Your Lists:", classes="panel-heading")
                             yield ListView(id="my-lists-listview")
+                            yield Button("＋ New List", variant="success", id="btn-lists-create")
                         with Vertical(id="lists-detail-panel"):
-                            yield Static(
-                                "[bold #d2a8ff]Select a list on the left[/]",
+                            yield FigletHeader(
+                                "Select a list",
+                                font="smslant",
+                                color="#d2a8ff",
+                                subtitle="Select a list on the left",
                                 id="lists-selected-heading",
                             )
-                            with Horizontal(id="lists-remove-bar", classes="section-toolbar"):
-                                yield Select([], prompt="Select movie to remove", id="lists-remove-select")
-                                yield Button("✖ Remove Movie", variant="warning", id="btn-lists-remove-movie")
-                            yield MovieGrid(page_size=12, id="my-lists-movie-grid")
+                            yield Static("", id="lists-selected-description")
+                            with Horizontal(id="lists-detail-actions"):
+                                yield Button("＋ Add Movie", variant="primary", id="btn-lists-add-movie")
+                                yield Button("Delete List", variant="error", id="btn-lists-delete")
+                            yield MovieGrid(
+                                page_size=12,
+                                id="my-lists-movie-grid",
+                                removable=True,
+                            )
 
-            # =================================================================
-            # TAB 6: MY PROFILE
-            # =================================================================
-            with TabPane("📊 My Profile", id="tab-profile"):
+            # -------------------- TAB 6: MY PROFILE --------------------
+            with TabPane("Profile", id="tab-profile"):
                 with Vertical(classes="tab-page-container"):
                     yield ProfileView(
                         target_username=session.username if session else "",
@@ -322,12 +306,9 @@ class HomeScreen(Screen):
     def on_mount(self) -> None:
         for btn_id in ("#btn-foryou-prev", "#btn-foryou-next"):
             self.query_one(btn_id, Button).display = False
-        for tbl_id in ("#diary-table", "#rec-table"):
-            tbl = self.query_one(tbl_id, DataTable)
-            tbl.cursor_type = "row"
-            tbl.zebra_stripes = True
 
         self._refresh_header()
+        self._set_explore_section("movies")
         self._rebuild_search_fields("mongo_req_1")
         self._rebuild_diary_fields("cassandra_req_1")
         self._rebuild_rec_fields("dgraph_req_2")
@@ -369,7 +350,31 @@ class HomeScreen(Screen):
 
     def _refresh_header(self) -> None:
         session = AuthService().current_session
-        self.query_one("#top-bar", Static).update(_build_home_header(session))
+        self.query_one("#btn-user-menu", Button).label = _format_user_menu_label(session)
+
+    @on(Button.Pressed, "#btn-user-menu")
+    def _on_user_menu_pressed(self) -> None:
+        session = AuthService().current_session
+
+        def _after(action: Optional[str]) -> None:
+            if action == "profile":
+                self.query_one("#user-tabs", TabbedContent).active = "tab-profile"
+                self._refresh_my_profile()
+            elif action == "review":
+                self.action_open_review_modal()
+            elif action == "lists":
+                self.query_one("#user-tabs", TabbedContent).active = "tab-lists"
+                self._load_my_lists()
+            elif action == "toggle_posters":
+                self.action_toggle_posters()
+            elif action == "help":
+                self.action_open_help()
+            elif action == "switch_user":
+                self.action_switch_user()
+            elif action == "logout":
+                self.action_logout()
+
+        self.app.push_screen(UserMenuModal(session), _after)
 
     # =========================================================================
     # TAB 1: HOME / NETFLIX-STYLE GENRE & FOR YOU CAROUSELS
@@ -409,16 +414,16 @@ class HomeScreen(Screen):
         if not sections or total == 0:
             state.show_empty(
                 "Your local catalog does not have saved movies yet.",
-                "Click the '📥 Fetch 20 Popular from TMDB' button above or perform a search.",
+                "Search for movies by title or genre to add them to your catalog.",
             )
             return
 
         state.clear_state()
-        for idx, (genre_name, movies) in enumerate(sections):
+        for index, (genre_name, movies) in enumerate(sections):
             self._genre_offsets.setdefault(genre_name, 0)
             container.mount(
                 Static(
-                    f"🎬 {genre_name.upper()} ({len(movies)})",
+                    f"{genre_name.upper()} ({len(movies)})",
                     classes="panel-heading",
                 )
             )
@@ -426,21 +431,21 @@ class HomeScreen(Screen):
             container.mount(row)
             btn_prev = Button(
                 "<",
-                id=f"btn-genre-prev-{idx}",
-                name=f"prev|{idx}",
+                id=f"btn-genre-prev-{index}",
+                name=f"prev|{index}",
                 classes="carousel-nav-btn home-genre-nav",
             )
-            bar = Horizontal(id=f"home-genre-bar-{idx}", classes="chips-bar")
+            bar = Horizontal(id=f"home-genre-bar-{index}", classes="chips-bar")
             btn_next = Button(
                 ">",
-                id=f"btn-genre-next-{idx}",
-                name=f"next|{idx}",
+                id=f"btn-genre-next-{index}",
+                name=f"next|{index}",
                 classes="carousel-nav-btn home-genre-nav",
             )
             row.mount(btn_prev)
             row.mount(bar)
             row.mount(btn_next)
-            self._update_genre_row(idx)
+            self._update_genre_row(index)
 
     def _update_foryou_row(self) -> None:
         per_row = self._cards_per_row
@@ -610,32 +615,108 @@ class HomeScreen(Screen):
         self.app.push_screen(MovieDetailScreen(event.movie_id or event.title))
 
     # =========================================================================
-    # TAB 2: ACCESSIBLE SEARCH FORM
+    # SHARED QUERY FORM HELPERS & TAB 2/3/4 FORMS
     # =========================================================================
 
-    @on(Select.Changed, "#search-mode-select")
-    def _on_search_mode_changed(self, event: Select.Changed) -> None:
-        self._rebuild_search_fields(str(event.value))
-
-    def _rebuild_search_fields(self, query_id: str) -> None:
-        container = self.query_one("#search-dynamic-fields", Vertical)
+    def _rebuild_query_fields(
+        self,
+        container_id: str,
+        query_id: str,
+        input_class: str,
+    ) -> None:
+        container = self.query_one(container_id, Vertical)
         container.remove_children()
         spec = get_query_by_id(query_id)
         if spec is None:
             return
 
-        for p in spec.params:
-            if p.name == "page":
+        inline_pairs = {("start_date", "end_date"), ("start_decade", "end_decade")}
+        visible_params = [p for p in spec.params if p.name not in ("page", "username")]
+        idx = 0
+        while idx < len(visible_params):
+            p = visible_params[idx]
+            if (
+                idx + 1 < len(visible_params)
+                and (p.name, visible_params[idx + 1].name) in inline_pairs
+            ):
+                end_p = visible_params[idx + 1]
+                row = Horizontal(classes="inline-fields-row")
+                container.mount(row)
+                for col_param, col_cls in (
+                    (p, "inline-field-col"),
+                    (end_p, "inline-field-col inline-field-col-last"),
+                ):
+                    col = Vertical(classes=col_cls)
+                    row.mount(col)
+                    col.mount(Label(f"{col_param.label}:", classes="field-label"))
+                    col.mount(
+                        Input(
+                            value=col_param.default,
+                            placeholder=col_param.placeholder,
+                            name=col_param.name,
+                            classes=f"query-field-input {input_class}",
+                        )
+                    )
+                idx += 2
                 continue
+
             container.mount(Label(f"{p.label}:", classes="field-label"))
             container.mount(
                 Input(
                     value=p.default,
                     placeholder=p.placeholder,
                     name=p.name,
-                    classes="search-field-input",
+                    classes=f"query-field-input {input_class}",
                 )
             )
+            idx += 1
+
+    def _collect_query_params(
+        self,
+        query_id: str,
+        input_class: str,
+    ) -> Dict[str, str]:
+        spec = get_query_by_id(query_id)
+        defaults = {p.name: p.default for p in spec.params} if spec else {}
+        params: Dict[str, str] = {}
+        for inp in self.query(f".{input_class}"):
+            if isinstance(inp, Input) and inp.name:
+                val = inp.value.strip()
+                if not val and defaults.get(inp.name):
+                    val = defaults[inp.name]
+                params[inp.name] = val
+        return params
+
+    @staticmethod
+    def _build_breadcrumb(
+        modes: List[Tuple[str, str]],
+        query_id: str,
+        params: Dict[str, str],
+        fallback: str,
+    ) -> str:
+        mode_label = next((label for label, qid in modes if qid == query_id), fallback)
+        summary_parts = [f"{k}={v}" for k, v in params.items() if k != "page" and v]
+        return f"{mode_label} ({', '.join(summary_parts)})" if summary_parts else mode_label
+
+    # =========================================================================
+    # TAB 2: EXPLORE (MOVIES, ACTIVITY, RECOMMENDATIONS)
+    # =========================================================================
+
+    @on(Select.Changed, "#explore-section-select")
+    def _on_explore_section_changed(self, event: Select.Changed) -> None:
+        self._set_explore_section(str(event.value))
+
+    def _set_explore_section(self, section: str) -> None:
+        self.query_one("#search-form-card", Vertical).display = section == "movies"
+        self.query_one("#diary-form-card", Vertical).display = section == "activity"
+        self.query_one("#rec-form-card", Vertical).display = section == "recs"
+
+    @on(Select.Changed, "#search-mode-select")
+    def _on_search_mode_changed(self, event: Select.Changed) -> None:
+        self._rebuild_search_fields(str(event.value))
+
+    def _rebuild_search_fields(self, query_id: str) -> None:
+        self._rebuild_query_fields("#search-dynamic-fields", query_id, "search-field-input")
 
     @on(Button.Pressed, "#btn-submit-search")
     def _on_submit_search_btn(self) -> None:
@@ -647,10 +728,8 @@ class HomeScreen(Screen):
 
     def _trigger_search(self) -> None:
         query_id = str(self.query_one("#search-mode-select", Select).value)
-        params: Dict[str, str] = {"page": "1"}
-        for inp in self.query(".search-field-input"):
-            if isinstance(inp, Input) and inp.name:
-                params[inp.name] = inp.value.strip()
+        params = self._collect_query_params(query_id, "search-field-input")
+        params["page"] = "1"
 
         if query_id == "mongo_req_7":
             actor_name = params.get("actor_name", "") or "Leonardo DiCaprio"
@@ -665,12 +744,7 @@ class HomeScreen(Screen):
             self.app.push_screen(ReviewsScreen(m_title, initial_keywords=kw))
             return
 
-        mode_label = next(
-            (label for label, qid in SEARCH_MODES if qid == query_id),
-            "Movie Search",
-        )
-        summary_parts = [f"{k}={v}" for k, v in params.items() if k != "page" and v]
-        breadcrumb = f"{mode_label} ({', '.join(summary_parts)})" if summary_parts else mode_label
+        breadcrumb = self._build_breadcrumb(SEARCH_MODES, query_id, params, "Movie Search")
         self.app.push_screen(SearchResultsScreen(query_id, params, breadcrumb=breadcrumb))
 
     # =========================================================================
@@ -679,84 +753,35 @@ class HomeScreen(Screen):
 
     @on(Select.Changed, "#diary-mode-select")
     def _on_diary_mode_changed(self, event: Select.Changed) -> None:
-        qid = str(event.value)
-        self._rebuild_diary_fields(qid)
+        self._rebuild_diary_fields(str(event.value))
 
     def _rebuild_diary_fields(self, query_id: str) -> None:
-        box = self.query_one("#diary-dynamic-fields", Horizontal)
-        box.remove_children()
-        spec = get_query_by_id(query_id)
-        if spec is None:
-            return
-        session = AuthService().current_session
-        active_uname = session.username if session else ""
-
-        for p in spec.params:
-            val = p.default
-            if p.name == "username" and not val and active_uname:
-                val = active_uname
-            col = Vertical(classes="inline-field-col")
-            box.mount(col)
-            col.mount(Label(p.label))
-            col.mount(
-                Input(
-                    value=val,
-                    placeholder=p.placeholder,
-                    name=p.name,
-                    classes="diary-field-input",
-                )
-            )
+        self._rebuild_query_fields("#diary-dynamic-fields", query_id, "diary-field-input")
 
     @on(Button.Pressed, "#btn-run-diary")
     def _on_run_diary_btn(self) -> None:
-        qid = str(self.query_one("#diary-mode-select", Select).value)
-        self._run_diary_query(qid)
+        self._trigger_diary()
 
-    def _run_diary_query(self, query_id: str) -> None:
-        params: Dict[str, str] = {}
-        for inp in self.query(".diary-field-input"):
-            if isinstance(inp, Input) and inp.name:
-                params[inp.name] = inp.value.strip()
+    @on(Input.Submitted, ".diary-field-input")
+    def _on_submit_diary_input(self) -> None:
+        self._trigger_diary()
 
-        state = self.query_one("#diary-state-msg", StateMessage)
-        state.show_loading("Querying your activity history...")
-        self._diary_worker(query_id, params)
-
-    @work(thread=True, exclusive=True, group="home-diary")
-    def _diary_worker(self, query_id: str, params: Dict[str, str]) -> None:
-        worker = get_current_worker()
-        res = execute_query(query_id, params)
-        if not worker.is_cancelled:
-            self.app.call_from_thread(self._render_diary_table, res)
-
-    def _render_diary_table(self, res: QueryResult) -> None:
-        self._diary_rows = list(res.rows)
-        state = self.query_one("#diary-state-msg", StateMessage)
-        table = self.query_one("#diary-table", DataTable)
-        table.clear(columns=True)
-
-        for col in res.columns:
-            table.add_column(get_column_label(col))
-
-        if not res.rows:
-            state.show_empty(
-                "No activity records found for this period.",
-                "Log watched movies or reviews with Ctrl+N, or verify your Cassandra records.",
+    def _trigger_diary(self) -> None:
+        query_id = str(self.query_one("#diary-mode-select", Select).value)
+        params = self._collect_query_params(query_id, "diary-field-input")
+        breadcrumb = self._build_breadcrumb(DIARY_MODES, query_id, params, "Activity")
+        self.app.push_screen(
+            QueryResultsScreen(
+                query_id=query_id,
+                params=params,
+                section_title="📖 ACTIVITY",
+                breadcrumb=breadcrumb,
+                back_label="◀ Back to Activity [Esc]",
+                loading_msg="Querying your activity history...",
+                empty_title="No activity records found for this period.",
+                empty_hint="Log watched movies or reviews, or adjust your date filters.",
             )
-            return
-
-        state.clear_state()
-        for r in res.rows:
-            table.add_row(*[format_cell_value(c, r.get(c)) for c in res.columns])
-
-    @on(DataTable.RowSelected, "#diary-table")
-    def _on_diary_row_selected(self, event: DataTable.RowSelected) -> None:
-        idx = event.cursor_row
-        if 0 <= idx < len(self._diary_rows):
-            row = self._diary_rows[idx]
-            title = row.get("movie_title")
-            if title:
-                self.app.push_screen(MovieDetailScreen(str(title)))
+        )
 
     # =========================================================================
     # TAB 4: FOR YOU / RECOMMENDATIONS (DGRAPH)
@@ -764,84 +789,35 @@ class HomeScreen(Screen):
 
     @on(Select.Changed, "#rec-mode-select")
     def _on_rec_mode_changed(self, event: Select.Changed) -> None:
-        qid = str(event.value)
-        self._rebuild_rec_fields(qid)
+        self._rebuild_rec_fields(str(event.value))
 
     def _rebuild_rec_fields(self, query_id: str) -> None:
-        box = self.query_one("#rec-dynamic-fields", Horizontal)
-        box.remove_children()
-        spec = get_query_by_id(query_id)
-        if spec is None:
-            return
-        session = AuthService().current_session
-        active_uname = session.username if session else ""
-
-        for p in spec.params:
-            val = p.default
-            if p.name == "username" and not val and active_uname:
-                val = active_uname
-            col = Vertical(classes="inline-field-col")
-            box.mount(col)
-            col.mount(Label(p.label))
-            col.mount(
-                Input(
-                    value=val,
-                    placeholder=p.placeholder,
-                    name=p.name,
-                    classes="rec-field-input",
-                )
-            )
+        self._rebuild_query_fields("#rec-dynamic-fields", query_id, "rec-field-input")
 
     @on(Button.Pressed, "#btn-run-recs")
     def _on_run_recs_btn(self) -> None:
-        qid = str(self.query_one("#rec-mode-select", Select).value)
-        self._run_rec_query(qid)
+        self._trigger_recs()
 
-    def _run_rec_query(self, query_id: str) -> None:
-        params: Dict[str, str] = {}
-        for inp in self.query(".rec-field-input"):
-            if isinstance(inp, Input) and inp.name:
-                params[inp.name] = inp.value.strip()
+    @on(Input.Submitted, ".rec-field-input")
+    def _on_submit_recs_input(self) -> None:
+        self._trigger_recs()
 
-        state = self.query_one("#rec-state-msg", StateMessage)
-        state.show_loading("Computing personalized recommendations...")
-        self._rec_worker(query_id, params)
-
-    @work(thread=True, exclusive=True, group="home-rec")
-    def _rec_worker(self, query_id: str, params: Dict[str, str]) -> None:
-        worker = get_current_worker()
-        res = execute_query(query_id, params)
-        if not worker.is_cancelled:
-            self.app.call_from_thread(self._render_rec_table, res)
-
-    def _render_rec_table(self, res: QueryResult) -> None:
-        self._rec_rows = list(res.rows)
-        state = self.query_one("#rec-state-msg", StateMessage)
-        table = self.query_one("#rec-table", DataTable)
-        table.clear(columns=True)
-
-        for col in res.columns:
-            table.add_column(get_column_label(col))
-
-        if not res.rows:
-            state.show_empty(
-                "No recommendations available for this criterion yet.",
-                "Rate movies, create lists, or follow other users to trigger suggestions.",
+    def _trigger_recs(self) -> None:
+        query_id = str(self.query_one("#rec-mode-select", Select).value)
+        params = self._collect_query_params(query_id, "rec-field-input")
+        breadcrumb = self._build_breadcrumb(REC_MODES, query_id, params, "For You")
+        self.app.push_screen(
+            QueryResultsScreen(
+                query_id=query_id,
+                params=params,
+                section_title="✨ FOR YOU",
+                breadcrumb=breadcrumb,
+                back_label="◀ Back to For You [Esc]",
+                loading_msg="Computing personalized recommendations...",
+                empty_title="No recommendations available for this criterion yet.",
+                empty_hint="Rate movies, create lists, or follow other users to trigger suggestions.",
             )
-            return
-
-        state.clear_state()
-        for r in res.rows:
-            table.add_row(*[format_cell_value(c, r.get(c)) for c in res.columns])
-
-    @on(DataTable.RowSelected, "#rec-table")
-    def _on_rec_row_selected(self, event: DataTable.RowSelected) -> None:
-        idx = event.cursor_row
-        if 0 <= idx < len(self._rec_rows):
-            row = self._rec_rows[idx]
-            title = row.get("movie_title")
-            if title:
-                self.app.push_screen(MovieDetailScreen(str(title)))
+        )
 
     # =========================================================================
     # TAB 5: MY LISTS
@@ -888,7 +864,7 @@ class HomeScreen(Screen):
         for lst in lists:
             lv.append(
                 ListItem(
-                    Label(f"📋 {lst.name} [dim]({lst.movies_count})[/]"),
+                    Label(f"{lst.name} [dim]({lst.movies_count})[/]"),
                     name=lst.name,
                 )
             )
@@ -901,31 +877,33 @@ class HomeScreen(Screen):
         self._render_selected_list_detail(selected)
 
     def _render_selected_list_detail(self, lst: Optional[UserListSummary]) -> None:
-        heading = self.query_one("#lists-selected-heading", Static)
+        heading = self.query_one("#lists-selected-heading", FigletHeader)
+        desc_widget = self.query_one("#lists-selected-description", Static)
         grid = self.query_one("#my-lists-movie-grid", MovieGrid)
-        remove_bar = self.query_one("#lists-remove-bar", Horizontal)
-        remove_sel = self.query_one("#lists-remove-select", Select)
 
         if lst is None:
-            heading.update("[dim]No list selected.[/]")
-            remove_bar.display = False
+            heading.set_header("No list", subtitle="No list selected.")
+            desc_widget.display = False
+            desc_widget.update("")
             grid.set_movies([], page=1, total=0, page_size=12)
             return
 
-        heading.update(
-            f"[bold #d2a8ff]📋 {lst.name}[/]  [dim]({lst.movies_count} movies — click a poster to view details)[/]"
+        heading.set_header(
+            lst.name,
+            subtitle=f"{lst.movies_count} movies — click a poster to view details",
+            max_plain_len=16,
         )
+        desc_widget.display = True
+        if lst.description:
+            desc_widget.update(f"[bold #58a6ff]Description:[/] {lst.description}")
+        else:
+            desc_widget.update("[bold #58a6ff]Description:[/] [dim italic]Not provided[/]")
         grid.set_movies(
             lst.movies,
             page=1,
             total=lst.movies_count,
             page_size=max(1, lst.movies_count),
         )
-        if lst.movies:
-            remove_bar.display = True
-            remove_sel.set_options([(m.title, m.title) for m in lst.movies])
-        else:
-            remove_bar.display = False
 
     @on(ListView.Selected, "#my-lists-listview")
     def _on_select_my_list(self, event: ListView.Selected) -> None:
@@ -934,15 +912,11 @@ class HomeScreen(Screen):
         matched = next((l for l in self._user_lists if l.name == name), None)
         self._render_selected_list_detail(matched)
 
-    @on(Button.Pressed, "#btn-lists-refresh")
-    def _on_lists_refresh(self) -> None:
-        self._load_my_lists()
-
     @on(Button.Pressed, "#btn-lists-create")
     def _on_lists_create(self) -> None:
         def _after(msg: Optional[str]) -> None:
             if msg:
-                self.query_one("#lists-state-msg", StateMessage).show_success(msg)
+                show_success_toast(self, msg)
                 self._load_my_lists()
                 self._refresh_my_profile()
 
@@ -950,7 +924,22 @@ class HomeScreen(Screen):
 
     @on(Button.Pressed, "#btn-lists-add-movie")
     def _on_lists_add_movie(self) -> None:
-        self.action_open_list_modal()
+        session = AuthService().current_session
+        state = self.query_one("#lists-state-msg", StateMessage)
+        if session is None:
+            state.show_error("Sign in to add movies to lists.")
+            return
+        if not self._selected_list_name:
+            state.show_error("Select or create a list first.")
+            return
+
+        def _after(msg: Optional[str]) -> None:
+            if msg:
+                show_success_toast(self, msg)
+                self._load_my_lists()
+                self._refresh_my_profile()
+
+        self.app.push_screen(AddMovieToListModal(self._selected_list_name), _after)
 
     @on(Button.Pressed, "#btn-lists-delete")
     def _on_lists_delete(self) -> None:
@@ -963,17 +952,32 @@ class HomeScreen(Screen):
             state.show_error("Select a list first.")
             return
 
-        ok, msg = ActionService().delete_list(session, self._selected_list_name)
-        if ok:
-            state.show_success(msg)
-            self._selected_list_name = ""
-            self._load_my_lists()
-            self._refresh_my_profile()
-        else:
-            state.show_error(msg)
+        list_name = self._selected_list_name
 
-    @on(Button.Pressed, "#btn-lists-remove-movie")
-    def _on_lists_remove_movie(self) -> None:
+        def _after_confirm(confirmed: bool) -> None:
+            if not confirmed:
+                return
+            ok, msg = ActionService().delete_list(session, list_name)
+            if ok:
+                state.show_success(msg)
+                self._selected_list_name = ""
+                self._load_my_lists()
+                self._refresh_my_profile()
+            else:
+                state.show_error(msg)
+
+        self.app.push_screen(
+            ConfirmModal(
+                title="Delete List",
+                message=f"Delete list '{list_name}' and all its movies?",
+                confirm_label="Accept",
+                confirm_variant="error",
+            ),
+            _after_confirm,
+        )
+
+    @on(MovieCard.RemoveRequested)
+    def _on_lists_remove_movie(self, event: MovieCard.RemoveRequested) -> None:
         session = AuthService().current_session
         state = self.query_one("#lists-state-msg", StateMessage)
         if session is None:
@@ -983,22 +987,33 @@ class HomeScreen(Screen):
             state.show_error("Select a list first.")
             return
 
-        sel_val = self.query_one("#lists-remove-select", Select).value
-        if sel_val is Select.BLANK or not sel_val:
-            state.show_error("Select a movie to remove from the list.")
-            return
+        list_name = self._selected_list_name
+        movie_title = event.title
 
-        ok, msg = ActionService().remove_movie_from_list(
-            session,
-            self._selected_list_name,
-            str(sel_val),
+        def _after_confirm(confirmed: bool) -> None:
+            if not confirmed:
+                return
+            ok, msg = ActionService().remove_movie_from_list(
+                session,
+                list_name,
+                movie_title,
+            )
+            if ok:
+                state.show_success(msg)
+                self._load_my_lists()
+                self._refresh_my_profile()
+            else:
+                state.show_error(msg)
+
+        self.app.push_screen(
+            ConfirmModal(
+                title="Remove Movie",
+                message=f"Remove '{movie_title}' from '{list_name}'?",
+                confirm_label="Accept",
+                confirm_variant="error",
+            ),
+            _after_confirm,
         )
-        if ok:
-            state.show_success(msg)
-            self._load_my_lists()
-            self._refresh_my_profile()
-        else:
-            state.show_error(msg)
 
     # =========================================================================
     # TAB 6: MY PROFILE
@@ -1037,7 +1052,7 @@ class HomeScreen(Screen):
     def action_open_list_modal(self) -> None:
         def _after(msg: Optional[str]) -> None:
             if msg:
-                self.query_one("#lists-state-msg", StateMessage).show_success(msg)
+                show_success_toast(self, msg)
                 self._load_my_lists()
                 self._refresh_my_profile()
 

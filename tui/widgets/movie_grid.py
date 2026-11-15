@@ -9,6 +9,7 @@ from typing import List
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Grid, Horizontal, Vertical, VerticalScroll
+from textual.events import Resize
 from textual.message import Message
 from textual.widgets import Button, Static
 
@@ -37,6 +38,7 @@ class MovieGrid(Vertical):
         id: str | None = None,
         classes: str | None = None,
         scrollable: bool = True,
+        removable: bool = False,
     ) -> None:
         super().__init__(id=id, classes=classes)
         self._page = 1
@@ -44,6 +46,7 @@ class MovieGrid(Vertical):
         self._total = 0
         self._movies: List[MovieSummary] = []
         self._scrollable = scrollable
+        self._removable = removable
 
     def compose(self) -> ComposeResult:
         if self._scrollable:
@@ -56,6 +59,25 @@ class MovieGrid(Vertical):
             yield Button("◀ Previous", id="btn-prev-page", classes="page-btn")
             yield Static("Page 1 of 1 (0 movies)", classes="page-info")
             yield Button("Next ▶", id="btn-next-page", classes="page-btn")
+
+    def on_mount(self) -> None:
+        self._update_responsive_columns()
+
+    def on_resize(self, event: Resize) -> None:
+        self._update_responsive_columns()
+
+    def _update_responsive_columns(self) -> None:
+        try:
+            width = self.size.width
+            if not width or width <= 0:
+                app_w = self.app.size.width or 100
+                width = max(24, app_w - 40)
+            available = max(22, width - 4)
+            cols = max(1, (available + 2) // 24)
+            grid = self.query_one(".movie-grid-inner", Grid)
+            grid.styles.grid_size_columns = cols
+        except Exception:
+            pass
 
     def set_movies(
         self,
@@ -70,10 +92,11 @@ class MovieGrid(Vertical):
         self._page = max(1, page)
         self._total = max(len(self._movies), total)
 
+        self._update_responsive_columns()
         grid = self.query_one(".movie-grid-inner", Grid)
         grid.remove_children()
         for m in self._movies:
-            grid.mount(MovieCard(m))
+            grid.mount(MovieCard(m, removable=self._removable))
 
         total_pages = max(1, math.ceil(self._total / self._page_size))
         info = self.query_one(".page-info", Static)

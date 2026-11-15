@@ -5,13 +5,121 @@ Screen {
     color: #e6edf3;
 }
 
+/* Floating Toasts */
+ToastRack {
+    margin: 1 2;
+}
+
+Toast {
+    background: #161b22;
+    color: #e6edf3;
+    border-left: thick #58a6ff;
+    padding: 1 2;
+}
+
+Toast.-error {
+    background: #1c1215;
+    border-left: thick #f85149;
+}
+
+Toast.-warning {
+    background: #1e1912;
+    border-left: thick #f0883e;
+}
+
+Toast.-information {
+    background: #bbf7d0;
+    color: #052e16;
+    border-left: thick #16a34a;
+}
+
 /* Header & Status Bar */
 #top-bar {
     dock: top;
     height: 3;
+    margin-top: 1;
     background: #161b22;
+    border-top: solid #161b22;
     border-bottom: solid #30363d;
     padding: 0 2;
+    content-align: left middle;
+    align: left middle;
+}
+
+#top-bar-brand {
+    width: auto;
+    height: 1;
+    content-align: left middle;
+}
+
+#top-bar-spacer {
+    width: 1fr;
+    height: 1;
+}
+
+#btn-user-menu {
+    width: auto;
+    min-width: 12;
+    height: 1;
+    border: none;
+    background: #21262d;
+    color: #79c0ff;
+    padding: 0 2;
+}
+
+#btn-user-menu:hover, #btn-user-menu:focus {
+    background: #30363d;
+    color: #ffffff;
+}
+
+UserMenuModal {
+    align: right top;
+    padding: 4 2 0 0;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+#user-menu-card {
+    width: 34;
+    height: auto;
+    background: #161b22;
+    border: round #58a6ff;
+    padding: 1 1;
+}
+
+#user-menu-header {
+    width: 100%;
+    height: auto;
+    layout: horizontal;
+    align: left middle;
+    border-bottom: solid #30363d;
+    margin-bottom: 1;
+    padding-bottom: 1;
+}
+
+#user-menu-title {
+    width: 1fr;
+    padding: 0 1;
+}
+
+#btn-close-user-menu {
+    width: 5;
+    min-width: 5;
+    height: 1;
+    border: none;
+    background: transparent;
+    color: #8b949e;
+    padding: 0;
+}
+
+#btn-close-user-menu:hover {
+    color: #f0f6fc;
+    background: #30363d;
+}
+
+.user-menu-item {
+    width: 100%;
+    height: 3;
+    margin-bottom: 0;
     content-align: left middle;
 }
 
@@ -33,6 +141,14 @@ AuthScreen {
     text-align: center;
     text-style: bold;
     color: #58a6ff;
+    margin-bottom: 1;
+}
+
+.figlet-header {
+    width: 100%;
+    height: auto;
+    border-bottom: dashed #30363d;
+    padding-bottom: 1;
     margin-bottom: 1;
 }
 
@@ -64,7 +180,7 @@ AuthScreen {
 }
 
 /* Modals (UserSwitchModal, ReviewMovieModal, ManageListModal, SocialActionModal, HelpScreen, etc.) */
-UserSwitchModal, ReviewMovieModal, ManageListModal, SocialActionModal, HelpScreen, WrappedModal, EditProfileModal, FollowListModal, CreateListModal, VisitProfileModal {
+UserSwitchModal, ReviewMovieModal, ManageListModal, SocialActionModal, HelpScreen, WrappedModal, EditProfileModal, UploadAvatarModal, FollowListModal, CreateListModal, VisitProfileModal, SearchReviewsModal, ConfirmModal, AddMovieToListModal {
     align: center middle;
 }
 
@@ -142,6 +258,34 @@ StateMessage {
     border: round #30363d;
 }
 
+StateMessage.empty-state {
+    padding: 2 4;
+    content-align: center middle;
+    text-align: center;
+    border: round #f0883e;
+}
+
+LoadingSpinner.loading-state,
+StateMessage.loading-state {
+    width: 100%;
+    height: 100%;
+    content-align: center middle;
+    text-align: center;
+    padding: 2 4;
+    margin: 0;
+    background: transparent;
+    border: none;
+}
+
+.modal-feedback.loading-state {
+    width: 100%;
+    height: auto;
+    padding: 0;
+    margin-bottom: 1;
+    content-align: center middle;
+    text-align: center;
+}
+
 /* MovieCard & MovieGrid (Letterboxd Poster Grid) */
 MovieGrid {
     height: 1fr;
@@ -172,6 +316,19 @@ MovieGrid {
     border: round #30363d;
     padding: 0 1;
     align: center top;
+}
+
+.movie-card-removable {
+    height: 18;
+}
+
+.movie-card-remove-btn {
+    width: 100%;
+    height: 1;
+    min-height: 1;
+    border: none;
+    padding: 0 1;
+    margin-top: 0;
 }
 
 .movie-card:focus {
@@ -211,6 +368,20 @@ MovieGrid {
 /* User HomeScreen & Tabs */
 #user-tabs {
     height: 1fr;
+    margin-top: 1;
+}
+
+#user-tabs Tabs {
+    width: 100%;
+}
+
+#user-tabs #tabs-list {
+    width: 100%;
+}
+
+#user-tabs Tab {
+    width: 1fr;
+    content-align: center middle;
 }
 
 #home-hero-header {
@@ -218,6 +389,7 @@ MovieGrid {
     height: auto;
     align: center middle;
     padding: 1 2;
+    margin-top: 1;
     margin-bottom: 1;
     background: #161b22;
     border: round #30363d;
@@ -232,7 +404,7 @@ MovieGrid {
 }
 
 #home-search-row {
-    width: 72;
+    width: 100%;
     height: 3;
     layout: horizontal;
     align: center middle;
@@ -251,6 +423,7 @@ MovieGrid {
 .tab-page-scroll {
     height: 1fr;
     padding: 1 2;
+    align: center top;
 }
 
 .section-toolbar {
@@ -264,12 +437,64 @@ MovieGrid {
     margin-left: 1;
 }
 
-#search-form-card {
+#tab-explore {
+    height: 1fr;
+}
+
+#explore-container {
+    width: 86;
+    height: auto;
+}
+
+#explore-selector-bar {
+    width: 100%;
+    height: 3;
+    layout: horizontal;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+#explore-selector-bar Label {
+    width: auto;
+    height: 3;
+    content-align: left middle;
+    margin: 0 1 0 0;
+    padding: 0;
+    text-style: bold;
+    color: #79c0ff;
+}
+
+#explore-section-select {
+    width: 1fr;
+}
+
+.query-form-card,
+#search-form-card,
+#diary-form-card,
+#rec-form-card {
     width: 86;
     height: auto;
     background: #161b22;
     border: round #58a6ff;
     padding: 1 3;
+}
+
+#search-dynamic-fields,
+#diary-dynamic-fields,
+#rec-dynamic-fields {
+    height: auto;
+}
+
+.form-title {
+    margin-bottom: 1;
+}
+
+.form-description {
+    margin-bottom: 2;
+}
+
+.form-mode-select {
+    margin-bottom: 1;
 }
 
 .field-label {
@@ -278,6 +503,7 @@ MovieGrid {
     text-style: bold;
 }
 
+.query-field-input,
 .search-field-input {
     margin-bottom: 1;
 }
@@ -307,8 +533,23 @@ MovieGrid {
     margin-right: 1;
 }
 
-#diary-table, #rec-table {
+.inline-field-col-last {
+    margin-right: 0;
+}
+
+#diary-table, #rec-table, #query-results-table {
     height: 1fr;
+}
+
+#wrapped-figlet-header {
+    width: 100%;
+    content-align: center middle;
+    margin-bottom: 1;
+}
+
+#wrapped-content-box {
+    width: 100%;
+    height: auto;
 }
 
 .wrapped-summary-card {
@@ -316,6 +557,30 @@ MovieGrid {
     border: double #d2a8ff;
     padding: 1 3;
     height: auto;
+    margin-bottom: 1;
+}
+
+.wrapped-section-card {
+    height: auto;
+    background: #161b22;
+    border: round #30363d;
+    padding: 1 3;
+    margin-bottom: 1;
+}
+
+.wrapped-section-title {
+    margin-bottom: 1;
+}
+
+.wrapped-explanation {
+    margin-bottom: 1;
+}
+
+.wrapped-cards-row {
+    width: 100%;
+    height: auto;
+    layout: horizontal;
+    align: center middle;
 }
 
 /* MovieDetailScreen, PersonScreen & ReviewsScreen */
@@ -335,7 +600,39 @@ MovieGrid {
     margin-right: 1;
 }
 
-#movie-hero-box, #person-hero-box {
+.detail-section-actions {
+    width: 100%;
+    height: 3;
+    layout: horizontal;
+    align: center middle;
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+.detail-section-actions Button {
+    width: auto;
+    margin: 0 1;
+}
+
+#movie-hero-box {
+    height: auto;
+    background: #161b22;
+    border: round #30363d;
+    padding: 1 2;
+    margin-bottom: 1;
+}
+
+#movie-hero-content {
+    width: 100%;
+    height: auto;
+    layout: horizontal;
+}
+
+#movie-hero-actions {
+    margin-bottom: 0;
+}
+
+#person-hero-box {
     height: auto;
     layout: horizontal;
     background: #161b22;
@@ -390,6 +687,10 @@ MovieGrid {
     margin: 0 1;
     content-align: center middle;
     text-style: bold;
+}
+
+.review-carousel-nav-btn {
+    height: 9;
 }
 
 .chips-bar {
@@ -691,6 +992,10 @@ MovieGrid {
 }
 
 /* My Lists Tab */
+#tab-lists {
+    height: 1fr;
+}
+
 #lists-workspace {
     height: 1fr;
     layout: horizontal;
@@ -711,18 +1016,33 @@ MovieGrid {
     border: round #30363d;
 }
 
+#btn-lists-create {
+    width: 100%;
+    margin-top: 1;
+}
+
 #lists-detail-panel {
     width: 1fr;
     height: 1fr;
 }
 
 #lists-selected-heading {
+    margin-bottom: 0;
+}
+
+#lists-selected-description {
     margin-bottom: 1;
 }
 
-#lists-remove-select {
-    width: 38;
-    margin-right: 1;
+#lists-detail-actions {
+    height: 3;
+    layout: horizontal;
+    align: center middle;
+    margin-bottom: 1;
+}
+
+#lists-detail-actions Button {
+    margin: 0 1;
 }
 
 /* ProfileView & ProfileScreen */
@@ -736,66 +1056,156 @@ ProfileView {
     border: round #30363d;
     padding: 1 2;
     margin-bottom: 1;
+    align: center top;
+}
+
+.profile-avatar-row {
+    width: 100%;
+    height: auto;
+    layout: horizontal;
+    align: center middle;
+    margin-bottom: 1;
+}
+
+#prof-avatar {
+    width: 18;
+    height: 11;
+}
+
+#prof-identity-banner {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 0;
+}
+
+#prof-joined-banner {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 1;
+}
+
+.profile-follow-row {
+    width: 100%;
+    height: auto;
+    layout: horizontal;
+    align: center middle;
+    margin-bottom: 1;
 }
 
 .profile-stats-row {
+    width: 100%;
     height: auto;
     layout: horizontal;
-    align: left middle;
-    margin: 1 0;
+    align: center middle;
+    margin-bottom: 1;
 }
 
-.profile-stat-pill {
+.profile-stat-text {
     width: auto;
-    height: 3;
-    content-align: center middle;
-    background: #0d1117;
-    border: round #30363d;
-    padding: 0 2;
-    margin-right: 1;
+    height: 1;
+    margin: 0 1;
+    color: #e6edf3;
 }
 
-.profile-stat-btn {
-    margin-right: 1;
+.profile-stat-link {
+    width: auto;
+    min-width: 1;
+    height: 1;
+    border: none;
+    background: transparent;
+    color: #79c0ff;
+    padding: 0 1;
+    margin: 0 1;
+}
+
+.profile-stat-link:hover {
+    color: #58a6ff;
+    text-style: underline;
+    background: transparent;
 }
 
 .profile-actions-row {
+    width: 100%;
     height: auto;
     layout: horizontal;
-    align: left middle;
+    align: center middle;
 }
 
 .profile-actions-row Button {
-    margin-right: 1;
+    margin: 0 1;
 }
 
 #profile-subtabs {
-    height: 1fr;
+    height: auto;
 }
 
-.profile-subtab-scroll {
-    height: 1fr;
+#profile-subtabs ContentSwitcher {
+    height: auto;
+}
+
+#profile-subtabs TabPane {
+    height: auto;
+}
+
+.profile-subtab-body {
+    height: auto;
     padding: 1 0;
+}
+
+ProfileView MovieGrid,
+ProfileView .movie-grid-scroll {
+    height: auto;
 }
 
 .profile-empty-hint {
     padding: 1 2;
 }
 
-.review-card-actions {
-    height: 3;
+.review-card-header {
+    width: 100%;
+    height: auto;
     layout: horizontal;
     align: left middle;
+    margin-bottom: 1;
+}
+
+.review-movie-title-link {
+    width: auto;
+    min-width: 1;
+    height: 1;
+    border: none;
+    background: transparent;
+    color: #58a6ff;
+    text-style: bold;
+    padding: 0;
+}
+
+.review-movie-title-link:hover {
+    color: #79c0ff;
+    text-style: bold underline;
+    background: transparent;
+}
+
+.review-card-meta {
+    width: 1fr;
+    height: 1;
+}
+
+.review-card-actions {
+    width: 100%;
+    height: 3;
+    layout: horizontal;
+    align: center middle;
 }
 
 .review-card-actions Button {
     min-width: 8;
     width: auto;
     padding: 0 1;
-    margin-right: 1;
+    margin: 0 1;
 }
 
-#follow-users-listview {
+#follow-users-listview, #add-movie-results-listview {
     height: 12;
     border: round #30363d;
     background: #0d1117;
@@ -806,10 +1216,19 @@ ProfileView {
     border: double #d2a8ff;
 }
 
-#edit-profile-modal-card, #create-list-modal-card, #visit-profile-modal-card {
+#edit-profile-modal-card, #upload-avatar-modal-card, #create-list-modal-card, #visit-profile-modal-card, #search-reviews-modal-card {
     border: double #58a6ff;
 }
 
 #follow-list-modal-card {
     border: double #d2a8ff;
+}
+
+#confirm-modal-card {
+    width: 56;
+    border: double #f85149;
+}
+
+#confirm-modal-message {
+    margin: 1 0;
 }

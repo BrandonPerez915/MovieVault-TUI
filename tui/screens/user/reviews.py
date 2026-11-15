@@ -239,7 +239,7 @@ class ReviewsScreen(Screen):
     def _on_open_author_profile(self, event: Button.Pressed) -> None:
         author = (event.button.name or "").strip()
         if author:
-            from tui.screens.user.profile_screen import ProfileScreen
+            from tui.screens.user.profile import ProfileScreen
 
             self.app.push_screen(ProfileScreen(author))
 
