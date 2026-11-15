@@ -60,6 +60,7 @@ from tui.modals import (
     UserSwitchModal,
 )
 from tui.screens.help import HelpScreen
+from tui.screens.settings import SettingsScreen
 from tui.screens.user.movie_detail import MovieDetailScreen
 from tui.screens.user.person import PersonScreen
 from tui.screens.user.query_results import QueryResultsScreen
@@ -122,13 +123,17 @@ class HomeScreen(Screen):
 
     BINDINGS = [
         Binding("f1", "open_help", "Help", show=True, priority=True),
-        Binding("ctrl+p", "toggle_posters", "Posters Toggle", show=True, priority=True),
+        Binding("f2", "open_settings", "Settings", show=True, priority=True),
+        Binding("slash", "focus_search", "Search", show=True),
+        Binding("1", "goto_tab('tab-home')", "Home", show=False),
+        Binding("2", "goto_tab('tab-lists')", "Lists", show=False),
+        Binding("3", "goto_tab('tab-explore')", "Explore", show=False),
+        Binding("4", "goto_tab('tab-profile')", "Profile", show=False),
         Binding("ctrl+n", "open_review_modal", "Review", show=True, priority=True),
         Binding("ctrl+b", "open_list_modal", "My Lists", show=True, priority=True),
-        Binding("ctrl+f", "open_social_modal", "Like / Follow", show=True, priority=True),
         Binding("ctrl+u", "switch_user", "Switch User", show=True, priority=True),
         Binding("ctrl+l", "logout", "Log Out", show=True, priority=True),
-        Binding("q", "app.quit", "Quit", show=True),
+        Binding("ctrl+q", "app.quit", "Quit", show=True, priority=True),
     ]
 
     def __init__(self) -> None:
@@ -179,7 +184,35 @@ class HomeScreen(Screen):
 
                     yield Vertical(id="home-genres-container")
 
-            # -------------------- TAB 2: EXPLORE (MOVIES, ACTIVITY, RECOMMENDATIONS) --------------------
+            # -------------------- TAB 2: MY LISTS --------------------
+            with TabPane("Lists", id="tab-lists"):
+                with Vertical(classes="tab-page-container"):
+                    yield StateMessage(id="lists-state-msg")
+
+                    with Horizontal(id="lists-workspace"):
+                        with Vertical(id="lists-sidebar"):
+                            yield Static("Your Lists:", classes="panel-heading")
+                            yield ListView(id="my-lists-listview")
+                            yield Button("＋ New List", variant="success", id="btn-lists-create")
+                        with Vertical(id="lists-detail-panel"):
+                            yield FigletHeader(
+                                "Select a list",
+                                font="smslant",
+                                color="#d2a8ff",
+                                subtitle="Select a list on the left",
+                                id="lists-selected-heading",
+                            )
+                            yield Static("", id="lists-selected-description")
+                            with Horizontal(id="lists-detail-actions"):
+                                yield Button("＋ Add Movie", variant="primary", id="btn-lists-add-movie")
+                                yield Button("Delete List", variant="error", id="btn-lists-delete")
+                            yield MovieGrid(
+                                page_size=12,
+                                id="my-lists-movie-grid",
+                                removable=True,
+                            )
+
+            # -------------------- TAB 3: EXPLORE (MOVIES, ACTIVITY, RECOMMENDATIONS) --------------------
             with TabPane("Explore", id="tab-explore"):
                 with VerticalScroll(classes="tab-page-scroll"):
                     with Vertical(id="explore-container"):
@@ -214,7 +247,7 @@ class HomeScreen(Screen):
                             yield Vertical(id="search-dynamic-fields")
                             with Horizontal(classes="form-submit-row"):
                                 yield Button(
-                                    "🔍 Search Now [Enter]",
+                                    "🔍 Search [Enter]",
                                     variant="success",
                                     id="btn-submit-search",
                                 )
@@ -237,7 +270,7 @@ class HomeScreen(Screen):
                             yield Vertical(id="diary-dynamic-fields")
                             with Horizontal(classes="form-submit-row"):
                                 yield Button(
-                                    "📖 View Activity [Enter]",
+                                    "🔍 Search [Enter]",
                                     variant="success",
                                     id="btn-run-diary",
                                 )
@@ -260,38 +293,10 @@ class HomeScreen(Screen):
                             yield Vertical(id="rec-dynamic-fields")
                             with Horizontal(classes="form-submit-row"):
                                 yield Button(
-                                    "✨ Get Recommendations [Enter]",
+                                    "🔍 Search [Enter]",
                                     variant="success",
                                     id="btn-run-recs",
                                 )
-
-            # -------------------- TAB 5: MY LISTS --------------------
-            with TabPane("Lists", id="tab-lists"):
-                with Vertical(classes="tab-page-container"):
-                    yield StateMessage(id="lists-state-msg")
-
-                    with Horizontal(id="lists-workspace"):
-                        with Vertical(id="lists-sidebar"):
-                            yield Static("Your Lists:", classes="panel-heading")
-                            yield ListView(id="my-lists-listview")
-                            yield Button("＋ New List", variant="success", id="btn-lists-create")
-                        with Vertical(id="lists-detail-panel"):
-                            yield FigletHeader(
-                                "Select a list",
-                                font="smslant",
-                                color="#d2a8ff",
-                                subtitle="Select a list on the left",
-                                id="lists-selected-heading",
-                            )
-                            yield Static("", id="lists-selected-description")
-                            with Horizontal(id="lists-detail-actions"):
-                                yield Button("＋ Add Movie", variant="primary", id="btn-lists-add-movie")
-                                yield Button("Delete List", variant="error", id="btn-lists-delete")
-                            yield MovieGrid(
-                                page_size=12,
-                                id="my-lists-movie-grid",
-                                removable=True,
-                            )
 
             # -------------------- TAB 6: MY PROFILE --------------------
             with TabPane("Profile", id="tab-profile"):
@@ -365,8 +370,8 @@ class HomeScreen(Screen):
             elif action == "lists":
                 self.query_one("#user-tabs", TabbedContent).active = "tab-lists"
                 self._load_my_lists()
-            elif action == "toggle_posters":
-                self.action_toggle_posters()
+            elif action == "settings":
+                self.action_open_settings()
             elif action == "help":
                 self.action_open_help()
             elif action == "switch_user":
@@ -891,7 +896,7 @@ class HomeScreen(Screen):
         heading.set_header(
             lst.name,
             subtitle=f"{lst.movies_count} movies — click a poster to view details",
-            max_plain_len=16,
+            single_word_max_len=10,
         )
         desc_widget.display = True
         if lst.description:
@@ -1036,11 +1041,27 @@ class HomeScreen(Screen):
     def action_open_help(self) -> None:
         self.app.push_screen(HelpScreen())
 
-    def action_toggle_posters(self) -> None:
-        PosterService().toggle_enabled()
-        self._refresh_header()
-        for poster in self.query(PosterImage):
-            poster.refresh_poster()
+    def action_open_settings(self) -> None:
+        def _after(posters_changed: Optional[bool]) -> None:
+            self._refresh_header()
+            if posters_changed:
+                for poster in self.query(PosterImage):
+                    poster.refresh_poster()
+
+        self.app.push_screen(SettingsScreen(), _after)
+
+    def action_goto_tab(self, tab_id: str) -> None:
+        tabs = self.query_one("#user-tabs", TabbedContent)
+        tabs.active = tab_id
+        if tab_id == "tab-lists":
+            self._load_my_lists()
+        elif tab_id == "tab-profile":
+            self._refresh_my_profile()
+
+    def action_focus_search(self) -> None:
+        tabs = self.query_one("#user-tabs", TabbedContent)
+        tabs.active = "tab-home"
+        self.query_one("#home-quick-search-input", Input).focus()
 
     def action_open_review_modal(self) -> None:
         def _after(msg: Optional[str]) -> None:

@@ -6,6 +6,7 @@ Used both inside `HomeScreen` ("📊 My Profile" tab) for the active user and
 inside `ProfileScreen` when visiting another user's profile.
 """
 
+import math
 from typing import Any, Dict, List, Optional
 
 from textual import on, work
@@ -58,6 +59,7 @@ class ProfileView(VerticalScroll):
         self._target_username = (target_username or "").strip().lstrip("@")
         self._profile: Optional[UserProfile] = None
         self._watched_page = 1
+        self._reviews_page = 1
         self._reviews_cache: List[Dict[str, Any]] = []
         self._rev_cards_per_row: int = 2
         self._lists_cache: List[UserListSummary] = []
@@ -95,11 +97,11 @@ class ProfileView(VerticalScroll):
         yield StateMessage(id="prof-state-msg")
 
         with TabbedContent(id="profile-subtabs"):
-            with TabPane("💬 Reviews", id="subtab-prof-reviews"):
+            with TabPane("Reviews", id="subtab-prof-reviews"):
                 yield Vertical(id="prof-reviews-scroll", classes="profile-subtab-body")
-            with TabPane("🎬 Watched Movies", id="subtab-prof-watched"):
+            with TabPane("Watched Movies", id="subtab-prof-watched"):
                 yield MovieGrid(page_size=12, id="prof-watched-grid")
-            with TabPane("📋 Lists", id="subtab-prof-lists"):
+            with TabPane("Lists", id="subtab-prof-lists"):
                 yield Vertical(id="prof-lists-scroll", classes="profile-subtab-body")
 
     def on_mount(self) -> None:
@@ -146,6 +148,7 @@ class ProfileView(VerticalScroll):
             return
         self._target_username = clean
         self._watched_page = 1
+        self._reviews_page = 1
         self._sync_action_buttons()
         self.query_one("#prof-state-msg", StateMessage).show_loading(
             f"Loading profile for @{clean}..."
@@ -182,7 +185,7 @@ class ProfileView(VerticalScroll):
         worker = get_current_worker()
         svc = ProfileService()
         profile = svc.get_user_profile(viewer_username, target_username)
-        reviews, reviews_total = svc.get_user_reviews(target_username, page=1, page_size=20)
+        reviews, reviews_total = svc.get_user_reviews(target_username, page=1, page_size=100)
         watched, watched_total = svc.get_user_watched_movies(
             target_username, page=watched_page, page_size=12
         )
@@ -282,9 +285,15 @@ class ProfileView(VerticalScroll):
         own = self._is_own_profile()
         per_row = self._calc_review_cards_per_row()
         self._rev_cards_per_row = per_row
+        page_size = per_row * 2
+        total = len(reviews)
+        total_pages = max(1, math.ceil(total / page_size))
+        self._reviews_page = max(1, min(self._reviews_page, total_pages))
+        start = (self._reviews_page - 1) * page_size
+        page_reviews = reviews[start : start + page_size]
         cards: List[Vertical] = []
 
-        for r in reviews:
+        for r in page_reviews:
             m_title = str(r.get("movie_title", "Untitled"))
             m_key = str(r.get("movie_id") or m_title)
             rating = float(r.get("rating") or 0.0)
@@ -340,6 +349,29 @@ class ProfileView(VerticalScroll):
                 cards[idx : idx + per_row],
                 per_row,
                 empty_slot_class="carousel-review-empty-slot",
+            )
+
+        if total_pages > 1:
+            scroll.mount(
+                Horizontal(
+                    Button(
+                        "<",
+                        id="btn-prof-rev-prev",
+                        classes="carousel-nav-btn",
+                        disabled=(self._reviews_page <= 1),
+                    ),
+                    Static(
+                        f"[bold #79c0ff]Page {self._reviews_page} of {total_pages}[/]  [dim]({total} reviews)[/]",
+                        classes="page-info",
+                    ),
+                    Button(
+                        ">",
+                        id="btn-prof-rev-next",
+                        classes="carousel-nav-btn",
+                        disabled=(self._reviews_page >= total_pages),
+                    ),
+                    classes="pagination-bar",
+                )
             )
 
     def _render_lists_tab(self, lists: List[UserListSummary]) -> None:
@@ -563,6 +595,22 @@ class ProfileView(VerticalScroll):
         from tui.screens.user.movie_detail import MovieDetailScreen
 
         self.app.push_screen(MovieDetailScreen(event.movie_id or event.title))
+
+    @on(Button.Pressed, "#btn-prof-rev-prev")
+    def _on_reviews_prev(self, event: Button.Pressed) -> None:
+        event.stop()
+        if self._reviews_page > 1:
+            self._reviews_page -= 1
+            self._render_reviews_tab(self._reviews_cache)
+
+    @on(Button.Pressed, "#btn-prof-rev-next")
+    def _on_reviews_next(self, event: Button.Pressed) -> None:
+        event.stop()
+        per_row = max(1, self._rev_cards_per_row)
+        total_pages = max(1, math.ceil(len(self._reviews_cache) / (per_row * 2)))
+        if self._reviews_page < total_pages:
+            self._reviews_page += 1
+            self._render_reviews_tab(self._reviews_cache)
 
     @on(MovieGrid.PageRequested, "#prof-watched-grid")
     def _on_watched_page(self, event: MovieGrid.PageRequested) -> None:

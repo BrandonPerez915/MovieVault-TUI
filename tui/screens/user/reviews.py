@@ -59,8 +59,8 @@ class ReviewsScreen(Screen):
                     value=self._keywords,
                     id="inp-rev-keywords",
                 )
-                yield Button("🔍 Filter", variant="primary", id="btn-rev-filter")
-                yield Button("✍ Write Review [Ctrl+N]", variant="success", id="btn-rev-new")
+                yield Button("🔎 Search", variant="primary", id="btn-rev-filter")
+                yield Button("Write Review", variant="success", id="btn-rev-new")
 
             yield StateMessage(id="rev-state-msg")
             yield VerticalScroll(id="rev-cards-scroll")
@@ -125,10 +125,10 @@ class ReviewsScreen(Screen):
             )
             new_btn = self.query_one("#btn-rev-new", Button)
             if m_status.get("existing_review"):
-                new_btn.label = "✏ Edit Your Review [Ctrl+N]"
+                new_btn.label = "Edit Review"
                 new_btn.variant = "warning"
             else:
-                new_btn.label = "✍ Write Review [Ctrl+N]"
+                new_btn.label = "Write Review"
                 new_btn.variant = "success"
 
         if not rows:
@@ -153,22 +153,26 @@ class ReviewsScreen(Screen):
                 user_liked = bool(cur_user and cur_user.lower() in liked_by)
 
                 card = Vertical(
-                    Static(
-                        f"[bold #79c0ff]@{uname}[/]  [bold #f0883e]★ {rating:.1f}[/]  "
-                        f"[bold #3fb950]♥ {likes}[/]  [dim]💬 {comments} • {created}[/]"
+                    Horizontal(
+                        Button(
+                            f"@{uname}",
+                            name=uname,
+                            classes="review-movie-title-link btn-open-author-profile",
+                        ),
+                        Static(
+                            f"  [bold #f0883e]★ {rating:.1f}[/]  "
+                            f"[bold #3fb950]♥ {likes}[/]  [dim]💬 {comments} • {created}[/]",
+                            classes="review-card-meta",
+                        ),
+                        classes="review-card-header",
                     ),
                     Static(content, classes="review-item-body"),
                     Horizontal(
                         Button(
-                            f"♥ Liked ({likes})" if user_liked else f"♡ Like ({likes})",
+                            f"Liked ({likes})" if user_liked else f"Like ({likes})",
                             variant="error" if user_liked else "default",
                             name=uname,
                             classes="btn-like-inline",
-                        ),
-                        Button(
-                            f"👤 @{uname}",
-                            name=uname,
-                            classes="btn-open-author-profile",
                         ),
                         classes="review-card-actions",
                     ),

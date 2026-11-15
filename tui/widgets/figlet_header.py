@@ -15,10 +15,17 @@ def render_figlet_markup(
     color: str = "#58a6ff",
     subtitle: str = "",
     max_plain_len: int | None = None,
+    single_word_max_len: int | None = None,
 ) -> Text:
     """Renders `text` with pyfiglet as a Rich Text object, optionally appending a dim subtitle."""
     clean_text = (text or "").strip()
-    use_plain = max_plain_len is not None and len(clean_text) > max_plain_len
+    use_plain = (
+        (max_plain_len is not None and len(clean_text) > max_plain_len)
+        or (
+            single_word_max_len is not None
+            and (len(clean_text.split()) != 1 or len(clean_text) > single_word_max_len)
+        )
+    )
     if not use_plain and pyfiglet is not None and clean_text:
         try:
             raw_ascii = pyfiglet.figlet_format(clean_text, font=font, width=120)
@@ -72,6 +79,7 @@ class FigletHeader(Static):
         subtitle: str = "",
         color: str | None = None,
         max_plain_len: int | None = None,
+        single_word_max_len: int | None = None,
     ) -> None:
         """Updates the figlet header title and subtitle dynamically."""
         self.update(
@@ -81,5 +89,6 @@ class FigletHeader(Static):
                 color=color or self._figlet_color,
                 subtitle=subtitle,
                 max_plain_len=max_plain_len,
+                single_word_max_len=single_word_max_len,
             )
         )

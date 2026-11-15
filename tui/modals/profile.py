@@ -8,9 +8,7 @@ from textual import on, work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.events import Click
-from textual.screen import ModalScreen
-from textual.timer import Timer
+from tui.modals.base import BaseModal
 from textual.widgets import (
     Button,
     Checkbox,
@@ -24,19 +22,16 @@ from textual.widgets import (
 )
 from textual.worker import get_current_worker
 
-from databases.mongodb import MongoConnection
 from services.ActionService import ActionService
 from services.AuthService import AuthService, UserSession
-from services.CatalogService import CatalogService, MovieSummary
-from services.PosterService import PosterService
 from services.ProfileService import ProfileService
 from services.QueryService import execute_query
-from tui.toast import show_error_toast, show_info_toast, show_success_toast, show_toast
+from tui.toast import show_error_toast, show_info_toast
 from tui.widgets.loading_spinner import LoadingSpinner
 
 
 
-class SocialActionModal(ModalScreen[Optional[str]]):
+class SocialActionModal(BaseModal[Optional[str]]):
     """Modal to like a user's review or follow an account."""
 
     BINDINGS = [
@@ -123,7 +118,7 @@ class SocialActionModal(ModalScreen[Optional[str]]):
 
 
 
-class WrappedModal(ModalScreen[None]):
+class WrappedModal(BaseModal[None]):
     """Modal that executes Mongo Req 8 and displays the user's Wrapped statistics."""
 
     BINDINGS = [
@@ -198,7 +193,7 @@ class WrappedModal(ModalScreen[None]):
 
 
 
-class EditProfileModal(ModalScreen[Optional[UserSession]]):
+class EditProfileModal(BaseModal[Optional[UserSession]]):
     """Modal to edit the authenticated user's username and email."""
 
     BINDINGS = [
@@ -287,7 +282,7 @@ class EditProfileModal(ModalScreen[Optional[UserSession]]):
 
 
 
-class UploadAvatarModal(ModalScreen[Optional[UserSession]]):
+class UploadAvatarModal(BaseModal[Optional[UserSession]]):
     """Modal to upload a profile photo from a local file path or image URL."""
 
     BINDINGS = [
@@ -358,7 +353,7 @@ class UploadAvatarModal(ModalScreen[Optional[UserSession]]):
 
 
 
-class FollowListModal(ModalScreen[Optional[str]]):
+class FollowListModal(BaseModal[Optional[str]]):
     """Modal displaying followers or following accounts; selecting one opens their profile."""
 
     BINDINGS = [
@@ -443,7 +438,7 @@ class FollowListModal(ModalScreen[Optional[str]]):
 
 
 
-class VisitProfileModal(ModalScreen[Optional[str]]):
+class VisitProfileModal(BaseModal[Optional[str]]):
     """Modal to look up and visit another user's profile by @username."""
 
     BINDINGS = [

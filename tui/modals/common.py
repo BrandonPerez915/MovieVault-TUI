@@ -2,42 +2,24 @@
 Letterboxd-style interactive modals for MovieVault (backend/tui/modals.py).
 """
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Literal
 
-from textual import on, work
+from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.events import Click
-from textual.screen import ModalScreen
-from textual.timer import Timer
+from tui.modals.base import BaseModal
 from textual.widgets import (
     Button,
-    Checkbox,
-    Input,
-    Label,
-    ListItem,
-    ListView,
-    Select,
     Static,
-    TextArea,
 )
-from textual.worker import get_current_worker
-
-from databases.mongodb import MongoConnection
-from services.ActionService import ActionService
-from services.AuthService import AuthService, UserSession
-from services.CatalogService import CatalogService, MovieSummary
-from services.PosterService import PosterService
-from services.ProfileService import ProfileService
-from services.QueryService import execute_query
-from tui.toast import show_error_toast, show_info_toast, show_success_toast, show_toast
-from tui.widgets.loading_spinner import LoadingSpinner
 
 
 
-class ConfirmModal(ModalScreen[bool]):
+class ConfirmModal(BaseModal[bool]):
     """Generic confirmation modal returning True on Accept and False on Cancel."""
+
+    _dismiss_value = False
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", show=True),

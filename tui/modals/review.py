@@ -2,37 +2,27 @@
 Letterboxd-style interactive modals for MovieVault (backend/tui/modals.py).
 """
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Optional
 
-from textual import on, work
+from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.events import Click
-from textual.screen import ModalScreen
-from textual.timer import Timer
+from tui.modals.base import BaseModal
 from textual.widgets import (
     Button,
     Checkbox,
     Input,
     Label,
-    ListItem,
-    ListView,
     Select,
     Static,
     TextArea,
 )
-from textual.worker import get_current_worker
 
-from databases.mongodb import MongoConnection
 from services.ActionService import ActionService
-from services.AuthService import AuthService, UserSession
-from services.CatalogService import CatalogService, MovieSummary
-from services.PosterService import PosterService
+from services.AuthService import AuthService
 from services.ProfileService import ProfileService
-from services.QueryService import execute_query
-from tui.toast import show_error_toast, show_info_toast, show_success_toast, show_toast
-from tui.widgets.loading_spinner import LoadingSpinner
+from tui.toast import show_error_toast, show_info_toast
 
 RATING_OPTIONS = [
     ("★★★★★ (5.0) — Masterpiece", "5.0"),
@@ -48,9 +38,7 @@ RATING_OPTIONS = [
 ]
 
 
-
-
-class ReviewMovieModal(ModalScreen[Optional[str]]):
+class ReviewMovieModal(BaseModal[Optional[str]]):
     """Letterboxd-style modal to log a watched movie and publish its review."""
 
     BINDINGS = [
@@ -61,6 +49,9 @@ class ReviewMovieModal(ModalScreen[Optional[str]]):
         super().__init__()
         self._initial_title = (movie_title or "").strip()
         self._initial_year = str(release_year) if release_year else "2024"
+        self._is_editing = False
+        self._existing_liked = True
+        self._existing_viewed_on = "Streaming"
 
     def compose(self) -> ComposeResult:
         with Vertical(id="review-modal-card", classes="modal-card"):
@@ -71,22 +62,23 @@ class ReviewMovieModal(ModalScreen[Optional[str]]):
             )
             yield Static("", id="review-modal-feedback", classes="modal-feedback")
 
-            yield Label("Movie title:")
-            yield Input(
-                placeholder="e.g. Inception",
-                value=self._initial_title,
-                id="rev-movie-title",
-            )
+            with Vertical(id="rev-title-group"):
+                yield Label("Movie title:")
+                yield Input(
+                    placeholder="e.g. Inception",
+                    value=self._initial_title,
+                    id="rev-movie-title",
+                )
 
             with Horizontal(classes="modal-row"):
-                with Vertical(classes="modal-col"):
+                with Vertical(id="rev-year-col", classes="modal-col"):
                     yield Label("Release year:")
                     yield Input(
                         placeholder="e.g. 2010",
                         value=self._initial_year,
                         id="rev-release-year",
                     )
-                with Vertical(classes="modal-col"):
+                with Vertical(id="rev-rating-col", classes="modal-col"):
                     yield Label("Rating:")
                     yield Select(
                         RATING_OPTIONS,
@@ -94,7 +86,7 @@ class ReviewMovieModal(ModalScreen[Optional[str]]):
                         allow_blank=False,
                         id="rev-rating-select",
                     )
-                with Vertical(classes="modal-col"):
+                with Vertical(id="rev-viewed-col", classes="modal-col"):
                     yield Label("Viewing medium:")
                     yield Input(
                         placeholder="e.g. Cinema, Netflix, MUBI",
@@ -132,21 +124,39 @@ class ReviewMovieModal(ModalScreen[Optional[str]]):
 
         status = ProfileService().get_user_movie_status(session.username, clean_title)
         existing = status.get("existing_review")
+        title_group = self.query_one("#rev-title-group", Vertical)
+        year_col = self.query_one("#rev-year-col", Vertical)
+        viewed_col = self.query_one("#rev-viewed-col", Vertical)
+        liked_cb = self.query_one("#rev-liked", Checkbox)
+
         if existing:
+            self._is_editing = True
+            self._existing_liked = bool(status.get("liked", True))
+            self._existing_viewed_on = str(existing.get("viewed_on") or "Streaming")
             header.update(
-                "[bold #f0883e]✏ EDIT YOUR EXISTING REVIEW (Ctrl+N)[/]\n"
+                "[bold #f0883e]EDIT YOUR EXISTING REVIEW[/]\n"
                 "[dim]You already reviewed this movie (1 review per movie allowed). Modify it below:[/]"
             )
             save_btn.label = "Update Review"
+            title_group.display = False
+            year_col.display = False
+            viewed_col.display = False
+            liked_cb.display = False
+
             rating_str = f"{float(existing.get('rating') or 4.5):.1f}"
             valid_ratings = {val for _, val in RATING_OPTIONS}
             if rating_str in valid_ratings:
                 self.query_one("#rev-rating-select", Select).value = rating_str
-            self.query_one("#rev-liked", Checkbox).value = bool(status.get("liked", True))
+            liked_cb.value = self._existing_liked
             area = self.query_one("#rev-content-area", TextArea)
             if replace_text or not area.text.strip():
                 area.load_text(str(existing.get("content") or ""))
         else:
+            self._is_editing = False
+            title_group.display = True
+            year_col.display = True
+            viewed_col.display = True
+            liked_cb.display = True
             header.update(
                 "[bold #3fb950]✍ LOG MOVIE AND PUBLISH REVIEW (Ctrl+N)[/]\n"
                 "[dim]Share your rating, viewing platform, and review content.[/]"
@@ -167,11 +177,11 @@ class ReviewMovieModal(ModalScreen[Optional[str]]):
             show_error_toast(self, msg)
             return
 
-        title = self.query_one("#rev-movie-title", Input).value
-        year_str = self.query_one("#rev-release-year", Input).value
+        title = (self._initial_title or self.query_one("#rev-movie-title", Input).value) if self._is_editing else self.query_one("#rev-movie-title", Input).value
+        year_str = self._initial_year if self._is_editing else self.query_one("#rev-release-year", Input).value
         rating_val = str(self.query_one("#rev-rating-select", Select).value)
-        viewed_on = self.query_one("#rev-viewed-on", Input).value
-        liked = self.query_one("#rev-liked", Checkbox).value
+        viewed_on = self._existing_viewed_on if self._is_editing else self.query_one("#rev-viewed-on", Input).value
+        liked = self._existing_liked if self._is_editing else self.query_one("#rev-liked", Checkbox).value
         content = self.query_one("#rev-content-area", TextArea).text
 
         try:
@@ -207,7 +217,7 @@ class ReviewMovieModal(ModalScreen[Optional[str]]):
 
 
 
-class SearchReviewsModal(ModalScreen[Optional[str]]):
+class SearchReviewsModal(BaseModal[Optional[str]]):
     """Modal to search a movie's reviews by keywords (MongoDB Req 5)."""
 
     BINDINGS = [

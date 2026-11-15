@@ -26,7 +26,7 @@ from services.AuthService import AuthService
 from services.CatalogService import CatalogService, MovieDetail
 from services.ProfileService import ProfileService
 from services.QueryService import execute_query
-from tui.modals import ManageListModal, ReviewMovieModal, SearchReviewsModal
+from tui.modals import ManageListModal, ReviewMovieModal
 from tui.screens.user.person import PersonScreen
 from tui.screens.user.reviews import ReviewsScreen
 from tui.toast import show_success_toast
@@ -111,11 +111,6 @@ class MovieDetailScreen(Screen):
                 yield Button(">", id="btn-rev-next", classes="carousel-nav-btn review-carousel-nav-btn")
             with Horizontal(id="detail-reviews-actions", classes="detail-section-actions"):
                 yield Button("Review Movie", variant="success", id="btn-detail-review")
-                yield Button(
-                    "🔎 Search reviews by keyword",
-                    variant="primary",
-                    id="btn-detail-search-reviews",
-                )
                 yield Button("View All Reviews", variant="warning", id="btn-detail-all-reviews")
 
         yield Footer()
@@ -391,17 +386,45 @@ class MovieDetailScreen(Screen):
                 btn_rev_prev.disabled = self._rev_offset <= 0
                 btn_rev_next.disabled = self._rev_offset >= max_rev_offset
 
-            rev_cards: List[Static] = []
+            session = AuthService().current_session
+            cur_user = session.username if session else ""
+            rev_cards: List[Vertical] = []
             for r in self._top_reviews[self._rev_offset : self._rev_offset + rev_per_row]:
+                author = str(r.get("username") or "user")
+                rating = float(r.get("rating") or 0.0)
+                likes = int(r.get("likes") or 0)
+                created = str(r.get("created_at") or "")
                 content = str(r.get("content") or "").strip()
                 if len(content) > 140:
                     content = content[:137] + "..."
+                liked_by = {str(u).lower() for u in (r.get("_liked_by") or [])}
+                user_liked = bool(cur_user and cur_user.lower() in liked_by)
+
                 rev_cards.append(
-                    Static(
-                        f"[bold #79c0ff]@{r.get('username', 'user')}[/]  "
-                        f"[bold #f0883e]★ {float(r.get('rating') or 0.0):.1f}[/]  "
-                        f"[bold #3fb950]♥ {r.get('likes', 0)}[/]  [dim]{r.get('created_at', '')}[/]\n\n"
-                        f"{content}",
+                    Vertical(
+                        Horizontal(
+                            Button(
+                                f"@{author}",
+                                name=author,
+                                classes="review-movie-title-link btn-md-author-link",
+                            ),
+                            Static(
+                                f"  [bold #f0883e]★ {rating:.1f}[/]  "
+                                f"[bold #3fb950]♥ {likes}[/]  [dim]{created}[/]",
+                                classes="review-card-meta",
+                            ),
+                            classes="review-card-header",
+                        ),
+                        Static(content, classes="review-item-body"),
+                        Horizontal(
+                            Button(
+                                f"Liked ({likes})" if user_liked else f"Like ({likes})",
+                                variant="error" if user_liked else "default",
+                                name=author,
+                                classes="btn-md-like-review",
+                            ),
+                            classes="review-card-actions",
+                        ),
                         classes="review-item-card",
                     )
                 )
@@ -509,20 +532,34 @@ class MovieDetailScreen(Screen):
     def _on_list(self) -> None:
         self.action_open_list()
 
-    @on(Button.Pressed, "#btn-detail-search-reviews")
-    def _on_search_reviews(self) -> None:
-        title = self._detail.title if self._detail else self._movie_key
-
-        def _after(keywords: Optional[str]) -> None:
-            if keywords is not None:
-                self.app.push_screen(ReviewsScreen(title, initial_keywords=keywords))
-
-        self.app.push_screen(SearchReviewsModal(movie_title=title), _after)
-
     @on(Button.Pressed, "#btn-detail-all-reviews")
     def _on_all_reviews(self) -> None:
         title = self._detail.title if self._detail else self._movie_key
         self.app.push_screen(ReviewsScreen(title))
+
+    @on(Button.Pressed, ".btn-md-author-link")
+    def _on_md_author_link(self, event: Button.Pressed) -> None:
+        username = (event.button.name or "").strip()
+        if username:
+            from tui.screens.user.profile import ProfileScreen
+
+            self.app.push_screen(ProfileScreen(username))
+
+    @on(Button.Pressed, ".btn-md-like-review")
+    def _on_md_like_review(self, event: Button.Pressed) -> None:
+        review_owner = (event.button.name or "").strip()
+        session = AuthService().current_session
+        state = self.query_one("#detail-state-msg", StateMessage)
+        if session is None:
+            state.show_error("Sign in to like reviews.")
+            return
+        title = self._detail.title if self._detail else self._movie_key
+        ok, msg = ActionService().like_review(session, title, review_owner)
+        if ok:
+            state.show_success(msg)
+            self._load_movie_worker(self._movie_key)
+        else:
+            state.show_error(msg)
 
     def action_open_review(self) -> None:
         title = self._detail.title if self._detail else self._movie_key

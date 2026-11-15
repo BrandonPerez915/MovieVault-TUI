@@ -141,7 +141,7 @@ class AdminScreen(Screen):
         Binding("f3", "switch_to_user_view", "User View", show=True, priority=True),
         Binding("ctrl+e", "execute_active_query", "Run Query", show=True, priority=True),
         Binding("ctrl+l", "logout", "Go to Login", show=True, priority=True),
-        Binding("q", "app.quit", "Quit", show=True),
+        Binding("ctrl+q", "app.quit", "Quit", show=True, priority=True),
     ]
 
     def __init__(self) -> None:

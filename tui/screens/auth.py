@@ -5,7 +5,7 @@ Login and Registration Screen for MovieVault (backend/tui/screens/auth_screen.py
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Input, Label, Static
 
@@ -21,7 +21,7 @@ class AuthScreen(Screen):
         Binding("f1", "open_help", "Help", show=True, priority=True),
         Binding("ctrl+r", "toggle_register", "Toggle Login/Register", show=True, priority=True),
         Binding("ctrl+g", "continue_guest", "Explore (User)", show=True, priority=True),
-        Binding("ctrl+a", "open_admin", "Admin Panel", show=True, priority=True),
+        Binding("ctrl+a", "open_admin", "Admin Panel", show=False, priority=True),
         Binding("ctrl+q", "app.quit", "Quit", show=True, priority=True),
     ]
 
@@ -78,14 +78,6 @@ class AuthScreen(Screen):
                 yield Button("Sign In [Enter]", variant="primary", id="btn-submit")
                 yield Button("Create Account [Ctrl+R]", variant="default", id="btn-toggle-mode")
                 yield Button("Explore [Ctrl+G]", variant="warning", id="btn-guest")
-                yield Button("Admin Panel [Ctrl+A]", variant="error", id="btn-admin")
-
-            with Vertical(id="demo-users-box"):
-                yield Static(
-                    "[bold #79c0ff]💡 Available modes:[/]\n"
-                    "  • [bold]User View [Ctrl+G][/]: Poster grid, movie & person files, community reviews, and lists.\n"
-                    "  • [bold]Admin Panel [Ctrl+A][/]: 24 requirements inspector, interactive console, and recursive TMDB population."
-                )
         yield Footer()
 
     def on_mount(self) -> None:
@@ -145,10 +137,6 @@ class AuthScreen(Screen):
     @on(Button.Pressed, "#btn-guest")
     def on_guest_pressed(self) -> None:
         self.action_continue_guest()
-
-    @on(Button.Pressed, "#btn-admin")
-    def on_admin_pressed(self) -> None:
-        self.action_open_admin()
 
     @on(Button.Pressed, "#btn-submit")
     def on_submit_pressed(self) -> None:
