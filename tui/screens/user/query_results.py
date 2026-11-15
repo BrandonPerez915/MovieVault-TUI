@@ -69,8 +69,6 @@ class QueryResultsScreen(Screen):
             yield StateMessage(id="query-state-msg")
             yield DataTable(id="query-results-table")
 
-        yield Footer()
-
     def on_mount(self) -> None:
         table = self.query_one("#query-results-table", DataTable)
         table.cursor_type = "row"

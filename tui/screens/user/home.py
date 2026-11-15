@@ -150,7 +150,7 @@ class HomeScreen(Screen):
     def compose(self) -> ComposeResult:
         session = AuthService().current_session
         with Horizontal(id="top-bar"):
-            yield Static("[bold #58a6ff]MOVIEVAULT[/]", id="top-bar-brand")
+            yield Static("[bold #58a6ff]∅ MOVIEVAULT[/]", id="top-bar-brand")
             yield Static("", id="top-bar-spacer")
             yield Button(_format_user_menu_label(session), id="btn-user-menu")
 
@@ -305,8 +305,6 @@ class HomeScreen(Screen):
                         target_username=session.username if session else "",
                         id="my-profile-view",
                     )
-
-        yield Footer()
 
     def on_mount(self) -> None:
         for btn_id in ("#btn-foryou-prev", "#btn-foryou-next"):

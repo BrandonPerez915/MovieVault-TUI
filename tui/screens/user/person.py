@@ -81,8 +81,6 @@ class PersonScreen(Screen):
             )
             yield MovieGrid(page_size=12, id="person-movies-grid", scrollable=False)
 
-        yield Footer()
-
     def on_mount(self) -> None:
         state = self.query_one("#person-state-msg", StateMessage)
         state.show_loading(f"Loading profile and filmography for {self._display_name}...")

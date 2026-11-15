@@ -11,6 +11,7 @@ from textual.widgets import Button, Footer, Input, Label, Static
 
 from services.AuthService import AuthService
 from tui.screens.help import HelpScreen
+from tui.toast import show_error_toast
 from tui.widgets.figlet_header import FigletHeader
 
 
@@ -31,7 +32,7 @@ class AuthScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            "[bold #58a6ff]🎬 MOVIEVAULT[/]  │  [dim]Your cinematic diary  •  Press F1 for Help[/]",
+            "[bold #58a6ff]∅ MOVIEVAULT[/]  │  [dim]Your cinematic diary[/]",
             id="top-bar",
         )
         with Container(id="auth-card"):
@@ -42,7 +43,6 @@ class AuthScreen(Screen):
                 subtitle="SIGN IN — Discover movies, write reviews, and curate your lists",
                 id="auth-title",
             )
-            yield Static("", id="auth-feedback")
 
             yield Label("Username:")
             yield Input(
@@ -78,7 +78,6 @@ class AuthScreen(Screen):
                 yield Button("Sign In [Enter]", variant="primary", id="btn-submit")
                 yield Button("Create Account [Ctrl+R]", variant="default", id="btn-toggle-mode")
                 yield Button("Explore [Ctrl+G]", variant="warning", id="btn-guest")
-        yield Footer()
 
     def on_mount(self) -> None:
         self._sync_mode_visibility()
@@ -121,7 +120,6 @@ class AuthScreen(Screen):
 
     def action_toggle_register(self) -> None:
         self._is_register_mode = not self._is_register_mode
-        self.query_one("#auth-feedback", Static).update("")
         self._sync_mode_visibility()
 
     def action_continue_guest(self) -> None:
@@ -150,16 +148,18 @@ class AuthScreen(Screen):
         auth = AuthService()
         username = self.query_one("#input-username", Input).value
         password = self.query_one("#input-password", Input).value
-        feedback = self.query_one("#auth-feedback", Static)
 
         if self._is_register_mode:
             email = self.query_one("#input-email", Input).value
             confirm = self.query_one("#input-confirm", Input).value
-            ok, _, msg = auth.register(username, email, password, confirm)
+            ok, session, msg = auth.register(username, email, password, confirm)
         else:
-            ok, _, msg = auth.login(username, password)
+            ok, session, msg = auth.login(username, password)
 
         if ok:
-            self.app.switch_screen("home")
+            if session is not None and session.is_admin:
+                self.app.switch_screen("admin")
+            else:
+                self.app.switch_screen("home")
         else:
-            feedback.update(f"[bold #f85149]✖ ERROR: {msg}[/]")
+            show_error_toast(self, msg)

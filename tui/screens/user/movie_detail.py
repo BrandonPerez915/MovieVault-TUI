@@ -113,8 +113,6 @@ class MovieDetailScreen(Screen):
                 yield Button("Review Movie", variant="success", id="btn-detail-review")
                 yield Button("View All Reviews", variant="warning", id="btn-detail-all-reviews")
 
-        yield Footer()
-
     def on_mount(self) -> None:
         for btn_id in (
             "#btn-dir-prev",

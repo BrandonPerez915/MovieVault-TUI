@@ -71,7 +71,7 @@ class WrappedScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            f"[bold #d2a8ff]📊 MOVIEVAULT WRAPPED[/]  ›  [bold]{self._username}[/]",
+            f"[bold #d2a8ff]∅ MOVIEVAULT WRAPPED[/]  ›  [bold]{self._username}[/]",
             id="top-bar",
         )
         with VerticalScroll(classes="detail-page-scroll"):
@@ -120,8 +120,6 @@ class WrappedScreen(Screen):
                         classes="wrapped-explanation",
                     )
                     yield Horizontal(id="wrapped-directors-row", classes="wrapped-cards-row")
-
-        yield Footer()
 
     def on_mount(self) -> None:
         self._load_wrapped()

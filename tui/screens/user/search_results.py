@@ -59,8 +59,6 @@ class SearchResultsScreen(Screen):
             yield StateMessage(id="search-state-msg")
             yield MovieGrid(page_size=10, id="search-results-grid")
 
-        yield Footer()
-
     def on_mount(self) -> None:
         self._run_page(self._page)
 

@@ -22,6 +22,9 @@ from databases.mongodb import MongoConnection
 from databases.dgraph import DgraphConnection
 
 DEMO_DEFAULT_PASSWORD = "demo123"
+DEFAULT_ADMIN_USERNAME = "admin"
+DEFAULT_ADMIN_EMAIL = "admin@movievault.local"
+DEFAULT_ADMIN_PASSWORD = "admin123"
 
 
 @dataclass
@@ -34,6 +37,12 @@ class UserSession:
     lists_count: int = 0
     is_live_db: bool = True
     avatar_url: str = ""
+    role: str = "user"
+
+    @property
+    def is_admin(self) -> bool:
+        """Returns True if this session has admin privileges."""
+        return self.role == "admin"
 
 
 def hash_password(raw_password: str) -> str:
@@ -75,6 +84,7 @@ class AuthService:
             return
         self._current_session: Optional[UserSession] = None
         self._indexes_ensured: bool = False
+        self._admin_ensured: bool = False
         self._initialized = True
 
     def _get_users_collection(self) -> Optional[Collection]:
@@ -134,6 +144,45 @@ class AuthService:
         finally:
             txn.discard()
 
+    def ensure_default_admin(self) -> None:
+        """Ensures the default admin user exists in MongoDB with `role='admin'`."""
+        if self._admin_ensured:
+            return
+        collection = self._get_users_collection()
+        if collection is None:
+            return
+        try:
+            existing = collection.find_one({"username": DEFAULT_ADMIN_USERNAME})
+            if existing:
+                if existing.get("role") != "admin":
+                    collection.update_one(
+                        {"_id": existing["_id"]},
+                        {"$set": {"role": "admin"}},
+                    )
+                self._admin_ensured = True
+                return
+
+            now = datetime.now(timezone.utc)
+            admin_doc: Dict[str, Any] = {
+                "username": DEFAULT_ADMIN_USERNAME,
+                "email": DEFAULT_ADMIN_EMAIL,
+                "password_hash": hash_password(DEFAULT_ADMIN_PASSWORD),
+                "role": "admin",
+                "created_at": now,
+                "lists": [],
+            }
+            res = collection.insert_one(admin_doc)
+            self._create_dgraph_user_node(
+                str(res.inserted_id),
+                DEFAULT_ADMIN_USERNAME,
+                DEFAULT_ADMIN_EMAIL,
+            )
+            self._admin_ensured = True
+        except DuplicateKeyError:
+            self._admin_ensured = True
+        except Exception:
+            pass
+
     @property
     def current_session(self) -> Optional[UserSession]:
         """Returns the currently authenticated user session."""
@@ -180,6 +229,8 @@ class AuthService:
                 "MongoDB is not connected. Verify that the MongoDB instance is active.",
             )
 
+        self.ensure_default_admin()
+
         try:
             user_doc = collection.find_one({"username": clean_user})
             if not user_doc:
@@ -193,12 +244,14 @@ class AuthService:
             if not check_password(password, stored_hash):
                 return False, None, "Incorrect password."
 
+            role = str(user_doc.get("role") or "user").lower()
             session = UserSession(
                 user_id=str(user_doc["_id"]),
                 username=user_doc["username"],
                 email=user_doc.get("email", ""),
                 lists_count=len(user_doc.get("lists", [])),
                 is_live_db=True,
+                role=role,
             )
             self._current_session = session
             return True, session, f"Successfully logged in as @{clean_user}"
@@ -250,6 +303,7 @@ class AuthService:
             "username": clean_user,
             "email": clean_email,
             "password_hash": pwd_hash,
+            "role": "user",
             "created_at": now,
             "lists": [],
         }
@@ -290,12 +344,14 @@ class AuthService:
             if not doc:
                 return False, None, f"User @{username} not found in MongoDB."
 
+            role = str(doc.get("role") or "user").lower()
             session = UserSession(
                 user_id=str(doc["_id"]),
                 username=doc["username"],
                 email=doc.get("email", ""),
                 lists_count=len(doc.get("lists", [])),
                 is_live_db=True,
+                role=role,
             )
             self._current_session = session
             return True, session, f"Active user changed to @{username}"

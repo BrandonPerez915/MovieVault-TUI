@@ -69,7 +69,6 @@ class ReviewsScreen(Screen):
                 yield Button("◀ Previous", id="btn-rev-prev", classes="page-btn")
                 yield Static("Page 1 of 1", id="rev-page-info", classes="page-info")
                 yield Button("Next ▶", id="btn-rev-next", classes="page-btn")
-        yield Footer()
 
     def on_mount(self) -> None:
         self._load_reviews(page=1)

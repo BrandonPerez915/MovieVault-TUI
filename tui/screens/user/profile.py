@@ -36,7 +36,6 @@ class ProfileScreen(Screen):
             with Horizontal(classes="detail-top-actions"):
                 yield Button("◀ Back [Esc]", variant="default", id="btn-profile-screen-back")
             yield ProfileView(target_username=self._username, id="external-profile-view")
-        yield Footer()
 
     @on(Button.Pressed, "#btn-profile-screen-back")
     def _on_back(self) -> None:

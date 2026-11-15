@@ -282,8 +282,6 @@ class AdminScreen(Screen):
                     )
                     yield RichLog(highlight=True, markup=True, id="seed-log")
 
-        yield Footer()
-
     def on_mount(self) -> None:
         table = self.query_one("#admin-results-table", DataTable)
         table.cursor_type = "row"

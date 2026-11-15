@@ -243,8 +243,6 @@ class SettingsScreen(Screen[bool]):
                             id="btn-settings-done",
                         )
 
-        yield Footer()
-
     def _cache_summary_text(self) -> str:
         """Returns a short summary of cached poster files on disk."""
         if not CACHE_DIR.exists():
