@@ -861,6 +861,8 @@ class MoviesRepository:
             genre_counter: Counter[str] = Counter()
             actor_counter: Counter[str] = Counter()
             director_counter: Counter[str] = Counter()
+            actor_meta: Dict[str, Dict[str, str]] = {}
+            director_meta: Dict[str, Dict[str, str]] = {}
 
             for review in reviews:
                 movie_documents = review.get("movie_doc") or []
@@ -883,12 +885,41 @@ class MoviesRepository:
                             genre_counter[str(genre)] += 1
 
                     for actor in (movie.get("cast") or [])[:5]:
-                        if actor.get("name"):
-                            actor_counter[actor["name"]] += 1
+                        actor_name = actor.get("name")
+                        if actor_name:
+                            actor_counter[actor_name] += 1
+                            if actor_name not in actor_meta:
+                                actor_meta[actor_name] = {
+                                    "id": str(actor.get("id") or actor_name),
+                                    "name": actor_name,
+                                    "poster_url": str(actor.get("poster_url") or ""),
+                                }
 
                     for director in movie.get("directors") or []:
-                        if director.get("name"):
-                            director_counter[director["name"]] += 1
+                        director_name = director.get("name")
+                        if director_name:
+                            director_counter[director_name] += 1
+                            if director_name not in director_meta:
+                                director_meta[director_name] = {
+                                    "id": str(director.get("id") or director_name),
+                                    "name": director_name,
+                                    "poster_url": str(director.get("poster_url") or ""),
+                                }
+
+            # Fill missing actor/director poster_urls from dedicated collections if available
+            top_actor_names = [name for name, _ in actor_counter.most_common(5)]
+            for actor_name in top_actor_names:
+                if not actor_meta[actor_name].get("poster_url"):
+                    adoc = active_database["actors"].find_one({"name": actor_name}, {"poster_url": 1})
+                    if adoc and adoc.get("poster_url"):
+                        actor_meta[actor_name]["poster_url"] = str(adoc["poster_url"])
+
+            top_director_names = [name for name, _ in director_counter.most_common(5)]
+            for director_name in top_director_names:
+                if not director_meta[director_name].get("poster_url"):
+                    ddoc = active_database["directors"].find_one({"name": director_name}, {"poster_url": 1})
+                    if ddoc and ddoc.get("poster_url"):
+                        director_meta[director_name]["poster_url"] = str(ddoc["poster_url"])
 
             user_impact = round(
                 avg_likes * math.log10(1 + total_reviews) + (total_reviews * 0.5),
@@ -904,6 +935,17 @@ class MoviesRepository:
                 "top_directors": ", ".join(director for director, _ in director_counter.most_common(3)) or "N/A",
                 "avg_likes_per_review": avg_likes,
                 "user_impact_score": user_impact,
+                "_genre_breakdown": [
+                    {"name": g, "count": c} for g, c in genre_counter.most_common(6)
+                ],
+                "_actor_cards": [
+                    {**actor_meta[name], "count": count}
+                    for name, count in actor_counter.most_common(5)
+                ],
+                "_director_cards": [
+                    {**director_meta[name], "count": count}
+                    for name, count in director_counter.most_common(5)
+                ],
             }
             return MongoQueryResult(rows=[row], total=1, source="mongodb")
         except Exception:

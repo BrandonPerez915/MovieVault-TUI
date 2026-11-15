@@ -284,6 +284,10 @@ USERS_VALIDATOR: Dict[str, Any] = {
                 "bsonType": "date",
                 "description": "Account registration timestamp.",
             },
+            "avatar_url": {
+                "bsonType": "string",
+                "description": "Optional profile photo URL or local image path.",
+            },
             "lists": {
                 "bsonType": "array",
                 "items": {
@@ -291,6 +295,7 @@ USERS_VALIDATOR: Dict[str, Any] = {
                     "required": ["name", "movies"],
                     "properties": {
                         "name": {"bsonType": "string"},
+                        "description": {"bsonType": "string"},
                         "movies": {
                             "bsonType": "array",
                             "items": {
@@ -364,6 +369,10 @@ LISTS_VALIDATOR: Dict[str, Any] = {
             "name": {
                 "bsonType": "string",
                 "description": "Name of the user-defined list.",
+            },
+            "description": {
+                "bsonType": "string",
+                "description": "Optional description of the movie list.",
             },
             "movies": {
                 "bsonType": "array",
