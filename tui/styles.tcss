@@ -1,0 +1,785 @@
+/* MovieVault Textual Stylesheet (backend/tui/styles.tcss) */
+
+Screen {
+    background: #0d1117;
+    color: #e6edf3;
+}
+
+/* Header & Status Bar */
+#top-bar {
+    dock: top;
+    height: 3;
+    background: #161b22;
+    border-bottom: solid #30363d;
+    padding: 0 2;
+    content-align: left middle;
+}
+
+/* Auth Screen */
+AuthScreen {
+    align: center middle;
+}
+
+#auth-card {
+    width: 88;
+    height: auto;
+    max-height: 40;
+    background: #161b22;
+    border: round #58a6ff;
+    padding: 1 3;
+}
+
+#auth-title {
+    text-align: center;
+    text-style: bold;
+    color: #58a6ff;
+    margin-bottom: 1;
+}
+
+#auth-feedback {
+    height: 2;
+    text-align: center;
+    color: #f0883e;
+}
+
+.auth-input {
+    margin-bottom: 1;
+}
+
+#auth-buttons {
+    height: 3;
+    align: center middle;
+    margin-top: 1;
+}
+
+#auth-buttons Button {
+    margin: 0 1;
+}
+
+#demo-users-box {
+    margin-top: 1;
+    border-top: dashed #30363d;
+    padding-top: 1;
+    height: auto;
+}
+
+/* Modals (UserSwitchModal, ReviewMovieModal, ManageListModal, SocialActionModal, HelpScreen, etc.) */
+UserSwitchModal, ReviewMovieModal, ManageListModal, SocialActionModal, HelpScreen, WrappedModal, EditProfileModal, FollowListModal, CreateListModal, VisitProfileModal {
+    align: center middle;
+}
+
+.modal-card {
+    width: 84;
+    height: auto;
+    max-height: 38;
+    background: #161b22;
+    border: double #58a6ff;
+    padding: 1 2;
+}
+
+#help-card {
+    width: 88;
+    border: double #58a6ff;
+}
+
+#switch-card {
+    width: 72;
+    height: 24;
+    border: double #d2a8ff;
+}
+
+#review-modal-card {
+    border: double #3fb950;
+}
+
+#rev-content-area {
+    height: 5;
+    border: round #30363d;
+    margin-bottom: 1;
+}
+
+#list-modal-card {
+    border: double #58a6ff;
+}
+
+#social-modal-card {
+    border: double #d2a8ff;
+}
+
+.modal-feedback {
+    height: 2;
+    color: #f85149;
+}
+
+.modal-row {
+    height: auto;
+    layout: horizontal;
+    margin-bottom: 1;
+}
+
+.modal-col {
+    width: 1fr;
+    height: auto;
+    margin-right: 1;
+}
+
+.modal-buttons {
+    height: 3;
+    align: right middle;
+    margin-top: 1;
+}
+
+.modal-buttons Button {
+    margin-left: 1;
+}
+
+/* StateMessage */
+StateMessage {
+    height: auto;
+    padding: 1 2;
+    margin-bottom: 1;
+    background: #161b22;
+    border: round #30363d;
+}
+
+/* MovieCard & MovieGrid (Letterboxd Poster Grid) */
+MovieGrid {
+    height: 1fr;
+}
+
+.movie-grid-scroll {
+    height: 1fr;
+    padding: 0 1;
+}
+
+.movie-grid-container {
+    height: auto;
+    padding: 0 1;
+}
+
+.movie-grid-inner {
+    layout: grid;
+    grid-size: 4;
+    grid-gutter: 1 2;
+    height: auto;
+    padding: 1 0;
+}
+
+.movie-card {
+    width: 22;
+    height: 16;
+    background: #161b22;
+    border: round #30363d;
+    padding: 0 1;
+    align: center top;
+}
+
+.movie-card:focus {
+    border: double #58a6ff;
+    background: #1f2937;
+}
+
+.card-poster {
+    width: 18;
+    height: 11;
+    content-align: center middle;
+}
+
+.card-caption {
+    width: 1fr;
+    height: 3;
+    text-align: center;
+}
+
+.pagination-bar {
+    height: 3;
+    background: #161b22;
+    border-top: solid #30363d;
+    padding: 0 2;
+    align: center middle;
+}
+
+.page-btn {
+    margin: 0 2;
+}
+
+.page-info {
+    width: auto;
+    content-align: center middle;
+}
+
+/* User HomeScreen & Tabs */
+#user-tabs {
+    height: 1fr;
+}
+
+.tab-page-container {
+    height: 1fr;
+    padding: 1 2;
+}
+
+.tab-page-scroll {
+    height: 1fr;
+    padding: 1 2;
+}
+
+.section-toolbar {
+    height: 3;
+    layout: horizontal;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+.section-toolbar Button {
+    margin-left: 1;
+}
+
+#search-form-card {
+    width: 86;
+    height: auto;
+    background: #161b22;
+    border: round #58a6ff;
+    padding: 1 3;
+}
+
+.field-label {
+    margin-top: 1;
+    color: #79c0ff;
+    text-style: bold;
+}
+
+.search-field-input {
+    margin-bottom: 1;
+}
+
+.form-submit-row {
+    height: 3;
+    margin-top: 1;
+    align: right middle;
+}
+
+.filter-card {
+    height: auto;
+    background: #161b22;
+    border: round #30363d;
+    padding: 1 2;
+    margin-bottom: 1;
+}
+
+.inline-fields-row {
+    height: auto;
+    layout: horizontal;
+}
+
+.inline-field-col {
+    width: 1fr;
+    height: auto;
+    margin-right: 1;
+}
+
+#diary-table, #rec-table {
+    height: 1fr;
+}
+
+.wrapped-summary-card {
+    background: #161b22;
+    border: double #d2a8ff;
+    padding: 1 3;
+    height: auto;
+}
+
+/* MovieDetailScreen, PersonScreen & ReviewsScreen */
+.detail-page-scroll, .detail-page-container {
+    height: 1fr;
+    padding: 1 2;
+}
+
+.detail-top-actions {
+    height: 3;
+    layout: horizontal;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+.detail-top-actions Button {
+    margin-right: 1;
+}
+
+#movie-hero-box, #person-hero-box {
+    height: auto;
+    layout: horizontal;
+    background: #161b22;
+    border: round #30363d;
+    padding: 1 2;
+    margin-bottom: 1;
+}
+
+#detail-poster {
+    width: 28;
+    height: 18;
+    margin-right: 2;
+}
+
+#person-photo {
+    width: 24;
+    height: 16;
+    margin-right: 2;
+}
+
+#movie-meta-box, #person-meta-box {
+    width: 1fr;
+    height: auto;
+}
+
+#person-movies-grid {
+    height: auto;
+}
+
+#person-movies-grid .movie-grid-container,
+#person-movies-grid .movie-grid-scroll {
+    height: auto;
+    overflow-y: hidden;
+}
+
+#person-movies-grid .movie-grid-inner {
+    height: auto;
+}
+
+.carousel-row {
+    width: 100%;
+    height: auto;
+    layout: horizontal;
+    align: center middle;
+    margin-bottom: 1;
+}
+
+.carousel-nav-btn {
+    width: 5;
+    min-width: 5;
+    height: 16;
+    margin: 0 1;
+    content-align: center middle;
+    text-style: bold;
+}
+
+.chips-bar {
+    width: 1fr;
+    height: auto;
+    layout: horizontal;
+    align: center middle;
+    padding: 0;
+}
+
+.reviews-row {
+    width: 100%;
+    height: auto;
+    layout: horizontal;
+    align: left top;
+    margin-bottom: 1;
+}
+
+.carousel-spacer {
+    width: 1fr;
+    height: 1;
+}
+
+.carousel-empty-slot {
+    width: 22;
+    height: 1;
+}
+
+.carousel-review-empty-slot {
+    width: 42;
+    height: 1;
+}
+
+.person-chip-btn {
+    margin-right: 0;
+}
+
+.person-card {
+    margin-right: 0;
+}
+
+#detail-reviews-preview {
+    width: 1fr;
+    height: auto;
+    align: left top;
+}
+
+#home-genres-container {
+    width: 100%;
+    height: auto;
+    margin-bottom: 2;
+}
+
+.reviews-filter-bar {
+    height: 3;
+    layout: horizontal;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+.reviews-filter-bar Input {
+    width: 36;
+    margin: 0 1;
+}
+
+#rev-cards-scroll {
+    height: 1fr;
+}
+
+.review-item-card {
+    width: 42;
+    max-width: 42;
+    min-height: 9;
+    height: auto;
+    background: #161b22;
+    border: round #30363d;
+    padding: 1 2;
+    margin-right: 0;
+}
+
+.list-item-card {
+    width: 1fr;
+    height: auto;
+    background: #161b22;
+    border: round #30363d;
+    padding: 1 2;
+    margin-bottom: 1;
+}
+
+.review-item-body {
+    margin: 1 0;
+}
+
+/* AdminScreen Grid */
+#dashboard-body {
+    layout: horizontal;
+    height: 1fr;
+}
+
+#sidebar {
+    width: 38;
+    height: 1fr;
+    background: #161b22;
+    border-right: solid #30363d;
+    padding: 1 1;
+}
+
+#sidebar-shortcuts {
+    margin-top: 1;
+    border-top: dashed #30363d;
+    padding-top: 1;
+    height: auto;
+}
+
+.panel-heading {
+    text-style: bold;
+    color: #79c0ff;
+    margin-bottom: 1;
+}
+
+#admin-modules-list {
+    height: 1fr;
+    border: round #30363d;
+    background: #0d1117;
+}
+
+#admin-modules-list:focus {
+    border: round #58a6ff;
+}
+
+#main-workspace {
+    width: 1fr;
+    height: 1fr;
+    padding: 1 2;
+}
+
+#queries-box {
+    height: 10;
+    border: round #30363d;
+    background: #161b22;
+    padding: 0 1;
+    margin-bottom: 1;
+}
+
+#admin-queries-list {
+    height: 1fr;
+    background: #161b22;
+}
+
+#admin-queries-list:focus {
+    border: solid #58a6ff;
+}
+
+#params-box {
+    height: auto;
+    min-height: 5;
+    border: round #30363d;
+    background: #161b22;
+    padding: 0 1;
+    margin-bottom: 1;
+    layout: horizontal;
+    align: left middle;
+}
+
+.param-input {
+    width: 1fr;
+    min-width: 16;
+    margin-right: 1;
+}
+
+#btn-admin-execute {
+    margin-left: 1;
+}
+
+#results-box {
+    height: 1fr;
+    border: round #30363d;
+    background: #0d1117;
+    padding: 0 1;
+}
+
+#admin-results-table {
+    height: 1fr;
+}
+
+#admin-results-table:focus {
+    border: solid #3fb950;
+}
+
+/* Technical Inspector Panel (AdminScreen) */
+#inspector-panel {
+    height: 11;
+    border: round #d2a8ff;
+    background: #161b22;
+    padding: 0 2;
+    margin-top: 1;
+}
+
+#inspector-panel.hidden {
+    display: none;
+}
+
+#inspector-header {
+    height: 2;
+    color: #d2a8ff;
+    text-style: bold;
+}
+
+#inspector-code {
+    height: 1fr;
+    background: #0d1117;
+}
+
+/* Admin Interactive Query Console & Seed Tab */
+#admin-tabs {
+    height: 1fr;
+}
+
+#console-container, #seed-container {
+    height: 1fr;
+    padding: 1 2;
+}
+
+#console-toolbar, #seed-controls-row {
+    height: 4;
+    layout: horizontal;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+#seed-controls-row Input {
+    width: 16;
+    margin: 0 2;
+}
+
+#seed-controls-row Button {
+    margin-left: 2;
+}
+
+#seed-progress-bar {
+    margin-bottom: 1;
+}
+
+#seed-summary-status {
+    height: 2;
+    margin-bottom: 1;
+}
+
+#seed-log {
+    height: 1fr;
+    border: round #30363d;
+    background: #0d1117;
+}
+
+#console-toolbar Label {
+    margin-right: 1;
+}
+
+#console-engine-select {
+    width: 36;
+    margin-right: 2;
+}
+
+#console-editor {
+    height: 10;
+    border: round #58a6ff;
+    margin-bottom: 1;
+}
+
+#console-status {
+    height: 2;
+    margin-bottom: 1;
+}
+
+#console-outputs {
+    height: 1fr;
+    layout: horizontal;
+}
+
+#console-table-box {
+    width: 1fr;
+    height: 1fr;
+    border: round #30363d;
+    background: #0d1117;
+    padding: 0 1;
+    margin-right: 1;
+}
+
+#console-results-table {
+    height: 1fr;
+}
+
+#console-json-box {
+    width: 1fr;
+    height: 1fr;
+    border: round #30363d;
+    background: #161b22;
+    padding: 0 1;
+}
+
+/* My Lists Tab */
+#lists-workspace {
+    height: 1fr;
+    layout: horizontal;
+}
+
+#lists-sidebar {
+    width: 34;
+    height: 1fr;
+    background: #161b22;
+    border: round #30363d;
+    padding: 1 1;
+    margin-right: 1;
+}
+
+#my-lists-listview {
+    height: 1fr;
+    background: #0d1117;
+    border: round #30363d;
+}
+
+#lists-detail-panel {
+    width: 1fr;
+    height: 1fr;
+}
+
+#lists-selected-heading {
+    margin-bottom: 1;
+}
+
+#lists-remove-select {
+    width: 38;
+    margin-right: 1;
+}
+
+/* ProfileView & ProfileScreen */
+ProfileView {
+    height: 1fr;
+}
+
+.profile-hero-card {
+    height: auto;
+    background: #161b22;
+    border: round #30363d;
+    padding: 1 2;
+    margin-bottom: 1;
+}
+
+.profile-stats-row {
+    height: auto;
+    layout: horizontal;
+    align: left middle;
+    margin: 1 0;
+}
+
+.profile-stat-pill {
+    width: auto;
+    height: 3;
+    content-align: center middle;
+    background: #0d1117;
+    border: round #30363d;
+    padding: 0 2;
+    margin-right: 1;
+}
+
+.profile-stat-btn {
+    margin-right: 1;
+}
+
+.profile-actions-row {
+    height: auto;
+    layout: horizontal;
+    align: left middle;
+}
+
+.profile-actions-row Button {
+    margin-right: 1;
+}
+
+#profile-subtabs {
+    height: 1fr;
+}
+
+.profile-subtab-scroll {
+    height: 1fr;
+    padding: 1 0;
+}
+
+.profile-empty-hint {
+    padding: 1 2;
+}
+
+.review-card-actions {
+    height: 3;
+    layout: horizontal;
+    align: left middle;
+}
+
+.review-card-actions Button {
+    min-width: 8;
+    width: auto;
+    padding: 0 1;
+    margin-right: 1;
+}
+
+#follow-users-listview {
+    height: 12;
+    border: round #30363d;
+    background: #0d1117;
+    margin: 1 0;
+}
+
+#wrapped-modal-card {
+    border: double #d2a8ff;
+}
+
+#edit-profile-modal-card, #create-list-modal-card, #visit-profile-modal-card {
+    border: double #58a6ff;
+}
+
+#follow-list-modal-card {
+    border: double #d2a8ff;
+}

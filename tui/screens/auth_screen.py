@@ -1,0 +1,174 @@
+"""
+Login and Registration Screen for MovieVault (backend/tui/screens/auth_screen.py).
+"""
+
+from textual import on
+from textual.app import ComposeResult
+from textual.binding import Binding
+from textual.containers import Container, Horizontal, Vertical
+from textual.screen import Screen
+from textual.widgets import Button, Footer, Input, Label, Static
+
+from services.AuthService import AuthService
+from tui.screens.help_screen import HelpScreen
+
+
+class AuthScreen(Screen):
+    """Interactive screen for Login, Registration, and navigation to User View or Admin Panel."""
+
+    BINDINGS = [
+        Binding("f1", "open_help", "Help", show=True, priority=True),
+        Binding("ctrl+r", "toggle_register", "Toggle Login/Register", show=True, priority=True),
+        Binding("ctrl+g", "continue_guest", "Explore (User)", show=True, priority=True),
+        Binding("ctrl+a", "open_admin", "Admin Panel", show=True, priority=True),
+        Binding("ctrl+q", "app.quit", "Quit", show=True, priority=True),
+    ]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._is_register_mode = False
+
+    def compose(self) -> ComposeResult:
+        yield Static(
+            "[bold #58a6ff]🎬 MOVIEVAULT[/]  │  [dim]Your cinematic diary  •  Press F1 for Help[/]",
+            id="top-bar",
+        )
+        with Container(id="auth-card"):
+            yield Static(
+                "🔐 MOVIEVAULT — SIGN IN\n"
+                "[dim]Discover movies, write reviews, and curate your lists[/]",
+                id="auth-title",
+            )
+            yield Static("", id="auth-feedback")
+
+            yield Label("Username:")
+            yield Input(
+                placeholder="Enter your username...",
+                id="input-username",
+                classes="auth-input",
+            )
+
+            yield Label("Email (required for registration):", id="lbl-email")
+            yield Input(
+                placeholder="user@example.com",
+                id="input-email",
+                classes="auth-input",
+            )
+
+            yield Label("Password:")
+            yield Input(
+                placeholder="Minimum 6 characters",
+                password=True,
+                id="input-password",
+                classes="auth-input",
+            )
+
+            yield Label("Confirm Password:", id="lbl-confirm")
+            yield Input(
+                placeholder="Repeat password",
+                password=True,
+                id="input-confirm",
+                classes="auth-input",
+            )
+
+            with Horizontal(id="auth-buttons"):
+                yield Button("Sign In [Enter]", variant="primary", id="btn-submit")
+                yield Button("Create Account [Ctrl+R]", variant="default", id="btn-toggle-mode")
+                yield Button("Explore [Ctrl+G]", variant="warning", id="btn-guest")
+                yield Button("Admin Panel [Ctrl+A]", variant="error", id="btn-admin")
+
+            with Vertical(id="demo-users-box"):
+                yield Static(
+                    "[bold #79c0ff]💡 Available modes:[/]\n"
+                    "  • [bold]User View [Ctrl+G][/]: Poster grid, movie & person files, community reviews, and lists.\n"
+                    "  • [bold]Admin Panel [Ctrl+A][/]: 24 requirements inspector, interactive console, and recursive TMDB population."
+                )
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self._sync_mode_visibility()
+        self.query_one("#input-username", Input).focus()
+
+    def _sync_mode_visibility(self) -> None:
+        lbl_email = self.query_one("#lbl-email", Label)
+        inp_email = self.query_one("#input-email", Input)
+        lbl_confirm = self.query_one("#lbl-confirm", Label)
+        inp_confirm = self.query_one("#input-confirm", Input)
+        btn_submit = self.query_one("#btn-submit", Button)
+        btn_toggle = self.query_one("#btn-toggle-mode", Button)
+        title = self.query_one("#auth-title", Static)
+
+        if self._is_register_mode:
+            lbl_email.display = True
+            inp_email.display = True
+            lbl_confirm.display = True
+            inp_confirm.display = True
+            btn_submit.label = "Register Account [Enter]"
+            btn_toggle.label = "Back to Sign In [Ctrl+R]"
+            title.update(
+                "📝 MOVIEVAULT — CREATE NEW ACCOUNT\n"
+                "[dim]Create your profile to rate movies, follow friends, and organize watchlists[/]"
+            )
+        else:
+            lbl_email.display = False
+            inp_email.display = False
+            lbl_confirm.display = False
+            inp_confirm.display = False
+            btn_submit.label = "Sign In [Enter]"
+            btn_toggle.label = "Create Account [Ctrl+R]"
+            title.update(
+                "🔐 MOVIEVAULT — SIGN IN\n"
+                "[dim]Discover movies, write reviews, and curate your lists[/]"
+            )
+
+    def action_open_help(self) -> None:
+        self.app.push_screen(HelpScreen())
+
+    def action_toggle_register(self) -> None:
+        self._is_register_mode = not self._is_register_mode
+        self.query_one("#auth-feedback", Static).update("")
+        self._sync_mode_visibility()
+
+    def action_continue_guest(self) -> None:
+        self.app.switch_screen("home")
+
+    def action_open_admin(self) -> None:
+        self.app.switch_screen("admin")
+
+    @on(Button.Pressed, "#btn-toggle-mode")
+    def on_toggle_pressed(self) -> None:
+        self.action_toggle_register()
+
+    @on(Button.Pressed, "#btn-guest")
+    def on_guest_pressed(self) -> None:
+        self.action_continue_guest()
+
+    @on(Button.Pressed, "#btn-admin")
+    def on_admin_pressed(self) -> None:
+        self.action_open_admin()
+
+    @on(Button.Pressed, "#btn-submit")
+    def on_submit_pressed(self) -> None:
+        self._submit_form()
+
+    @on(Input.Submitted)
+    def on_input_submitted(self) -> None:
+        self._submit_form()
+
+    def _submit_form(self) -> None:
+        auth = AuthService()
+        username = self.query_one("#input-username", Input).value
+        password = self.query_one("#input-password", Input).value
+        feedback = self.query_one("#auth-feedback", Static)
+
+        if self._is_register_mode:
+            email = self.query_one("#input-email", Input).value
+            confirm = self.query_one("#input-confirm", Input).value
+            ok, _, msg = auth.register(username, email, password, confirm)
+        else:
+            ok, _, msg = auth.login(username, password)
+
+        if ok:
+            self.app.switch_screen("home")
+        else:
+            feedback.update(f"[bold #f85149]✖ ERROR: {msg}[/]")
