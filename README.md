@@ -15,3 +15,19 @@ Out of scope: Watching movies within the platform. Informing the user where the 
 - Brandon Michelle Pérez Saldaña
 - Sofía Alejandra Cortez Jiménez
 - Jorge Alberto Orozco Yañez
+
+## CLI & TUI Usage
+
+```bash
+# Launch interactive TUI (with terminal poster rendering)
+./backend/.venv/bin/python main.py
+
+# Launch TUI in text-only mode (accessibility / low bandwidth)
+./backend/.venv/bin/python main.py --no-posters
+
+# Populate MongoDB recursively with N popular movies from TMDB (movies + directors + actors)
+./backend/.venv/bin/python main.py --seed 50
+
+# Run multi-database connection & query catalog diagnostic
+./backend/.venv/bin/python main.py --status
+```

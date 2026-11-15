@@ -213,6 +213,36 @@ MovieGrid {
     height: 1fr;
 }
 
+#home-hero-header {
+    width: 100%;
+    height: auto;
+    align: center middle;
+    padding: 1 2;
+    margin-bottom: 1;
+    background: #161b22;
+    border: round #30363d;
+}
+
+#home-ascii-banner {
+    width: 100%;
+    height: auto;
+    text-align: center;
+    content-align: center middle;
+    margin-bottom: 1;
+}
+
+#home-search-row {
+    width: 72;
+    height: 3;
+    layout: horizontal;
+    align: center middle;
+}
+
+#home-quick-search-input {
+    width: 1fr;
+    margin-right: 1;
+}
+
 .tab-page-container {
     height: 1fr;
     padding: 1 2;

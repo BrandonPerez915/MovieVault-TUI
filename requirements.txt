@@ -6,3 +6,5 @@ pydgraph>=21.3.0
 textual>=0.85.0
 rich>=13.7.0
 bcrypt>=4.1.0
+pillow>=10.3.0
+rich-pixels>=3.0.1

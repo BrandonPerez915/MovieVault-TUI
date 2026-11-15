@@ -2,8 +2,7 @@ from pathlib import Path
 import os
 import dotenv
 
-BACKEND_DIR = Path(__file__).resolve().parent
-ROOT_DIR = BACKEND_DIR.parent
+ROOT_DIR = Path(__file__).resolve().parent
 ENV_FILE = ROOT_DIR / ".env"
 
 dotenv.load_dotenv(dotenv_path=ENV_FILE)
@@ -22,6 +21,7 @@ DGRAPH_PORT = int(os.getenv("DGRAPH_PORT", "9080"))
 DGRAPH_URL = f"{DGRAPH_HOST}:{DGRAPH_PORT}"
 
 TMDB_READ_ACCESS_TOKEN = os.getenv("TMDB_READ_ACCESS_TOKEN") or ""
+
 TMDB_API_URL = os.getenv("BASE_TMDB_API_URL") or "https://api.themoviedb.org/3"
 TMDB_IMAGE_URL = os.getenv("BASE_TMDB_IMAGE_URL") or "https://image.tmdb.org/t/p/w500"
 
