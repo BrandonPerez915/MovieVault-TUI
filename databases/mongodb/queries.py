@@ -164,8 +164,7 @@ class MoviesRepository:
         name = (name or "").strip()
         return name.title()
 
-    @staticmethod
-    def _genre_filter(self,genre: str) -> Dict[str, Any]:
+    def _genre_filter(self, genre: str) -> Dict[str, Any]:
         """
         Builds an equality / `$in` filter on `genres`.
         """
@@ -202,7 +201,6 @@ class MoviesRepository:
             return {"genres": candidates[0]}
         return {"genres": {"$in": candidates}}
 
-    @staticmethod
     def _country_filter(self, country: str) -> Dict[str, Any]:
         """
         Builds an equality / `$in` filter on `countries`.
