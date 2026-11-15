@@ -917,6 +917,40 @@ class CatalogService:
         except Exception:
             return [], 0
 
+    def search_movies_local(
+        self,
+        db: Optional[Database],
+        query: str = "",
+        limit: int = 15,
+    ) -> List[MovieSummary]:
+        """Searches movies only in local MongoDB (no TMDB fallback)."""
+        if db is None:
+            return []
+        clean = (query or "").strip()
+        filt: Dict[str, Any] = {}
+        if clean:
+            filt["title"] = {"$regex": re.escape(clean), "$options": "i"}
+        try:
+            cursor = (
+                db["movies"]
+                .find(
+                    filt,
+                    {
+                        "title": 1,
+                        "release_year": 1,
+                        "rating": 1,
+                        "poster_url": 1,
+                        "genres": 1,
+                        "impact_score": 1,
+                    },
+                )
+                .sort("impact_score", DESCENDING)
+                .limit(max(1, limit))
+            )
+            return [self._doc_to_summary(d) for d in cursor]
+        except Exception:
+            return []
+
     def get_movies_by_genres(
         self,
         db: Optional[Database],
