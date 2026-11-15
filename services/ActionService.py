@@ -420,8 +420,8 @@ class ActionService:
         review_owner: str,
     ) -> Tuple[bool, str]:
         """
-        Logs a like from `user` to `review_owner`'s review of `movie_title`.
-        Enforces at most 1 like per user per review and persists `liked_by` in MongoDB.
+        Toggles a like from `user` to `review_owner`'s review of `movie_title`.
+        Adds a like if not yet liked, or removes the existing like from `liked_by` in MongoDB.
         """
         clean_title = (movie_title or "").strip()
         clean_owner = (review_owner or "").strip().lstrip("@")
@@ -444,11 +444,25 @@ class ActionService:
                     f"No review found from @{clean_owner} for '{clean_title}' in MongoDB.",
                 )
 
-            liked_by = {str(u).lower() for u in (rev_doc.get("liked_by") or [])}
-            if user.username.lower() in liked_by:
+            raw_liked_by = list(rev_doc.get("liked_by") or [])
+            if any(str(u).lower() == user.username.lower() for u in raw_liked_by):
+                new_liked_by = [
+                    u for u in raw_liked_by if str(u).lower() != user.username.lower()
+                ]
+                current_likes = int(rev_doc.get("likes") or 0)
+                new_likes = max(0, current_likes - 1)
+                db["reviews"].update_one(
+                    {"_id": rev_doc["_id"]},
+                    {
+                        "$set": {
+                            "liked_by": new_liked_by,
+                            "likes": new_likes,
+                        }
+                    },
+                )
                 return (
-                    False,
-                    f"You have already liked @{clean_owner}'s review of '{clean_title}' (only 1 like per user is allowed).",
+                    True,
+                    f"Like removed from @{clean_owner}'s review of '{clean_title}'.",
                 )
 
             db["reviews"].update_one(
@@ -471,6 +485,7 @@ class ActionService:
         list_name: str,
         movie_title: str,
         poster_url: str = "",
+        description: str = "",
     ) -> Tuple[bool, str]:
         """
         Creates a personal list or adds a movie to an existing list of the user.
@@ -478,6 +493,7 @@ class ActionService:
         """
         clean_list = (list_name or "").strip()
         clean_movie = (movie_title or "").strip()
+        clean_desc = (description or "").strip()
         if not clean_list or not clean_movie:
             return False, "List name and movie title are required."
 
@@ -504,6 +520,32 @@ class ActionService:
             existing_list = db["lists"].find_one(
                 {"owner.username": rx_user, "name": rx_list}
             )
+            user_doc = db["users"].find_one({"username": rx_user})
+            user_lists = list(user_doc.get("lists") or []) if user_doc is not None else []
+            matched_idx = next(
+                (
+                    idx
+                    for idx, item in enumerate(user_lists)
+                    if str(item.get("name") or "").lower() == clean_list.lower()
+                ),
+                None,
+            )
+
+            # Check if the movie is already present in either `lists` or `users.lists`
+            already_in_lists_col = existing_list is not None and any(
+                str(m.get("title") or "").lower() == resolved_title.lower()
+                for m in (existing_list.get("movies") or [])
+            )
+            already_in_user_doc = matched_idx is not None and any(
+                str(m.get("title") or "").lower() == resolved_title.lower()
+                for m in (user_lists[matched_idx].get("movies") or [])
+            )
+            if already_in_lists_col or already_in_user_doc:
+                return (
+                    False,
+                    f"Movie '{resolved_title}' is already in list '{clean_list}'.",
+                )
+
             if existing_list is None:
                 new_list_doc: Dict[str, Any] = {
                     "owner": {
@@ -511,42 +553,29 @@ class ActionService:
                         "username": user.username,
                     },
                     "name": clean_list,
+                    "description": clean_desc,
                     "movies": [movie_entry],
                 }
                 db["lists"].insert_one(new_list_doc)
             else:
-                existing_titles = {
-                    str(m.get("title") or "").lower()
-                    for m in (existing_list.get("movies") or [])
-                }
-                if resolved_title.lower() not in existing_titles:
-                    db["lists"].update_one(
-                        {"_id": existing_list["_id"]},
-                        {"$push": {"movies": movie_entry}},
-                    )
-
-            user_doc = db["users"].find_one({"username": rx_user})
-            if user_doc is not None:
-                user_lists = list(user_doc.get("lists") or [])
-                matched_idx = next(
-                    (
-                        idx
-                        for idx, item in enumerate(user_lists)
-                        if str(item.get("name") or "").lower() == clean_list.lower()
-                    ),
-                    None,
+                db["lists"].update_one(
+                    {"_id": existing_list["_id"]},
+                    {"$push": {"movies": movie_entry}},
                 )
+
+            if user_doc is not None:
                 if matched_idx is None:
-                    user_lists.append({"name": clean_list, "movies": [movie_entry]})
+                    user_lists.append(
+                        {
+                            "name": clean_list,
+                            "description": clean_desc,
+                            "movies": [movie_entry],
+                        }
+                    )
                 else:
-                    existing_titles = {
-                        str(m.get("title") or "").lower()
-                        for m in user_lists[matched_idx].get("movies", [])
-                    }
-                    if resolved_title.lower() not in existing_titles:
-                        user_lists[matched_idx].setdefault("movies", []).append(
-                            movie_entry
-                        )
+                    user_lists[matched_idx].setdefault("movies", []).append(
+                        movie_entry
+                    )
                 db["users"].update_one(
                     {"_id": user_doc["_id"]},
                     {"$set": {"lists": user_lists}},
@@ -564,12 +593,14 @@ class ActionService:
         self,
         user: UserSession,
         list_name: str,
+        description: str = "",
     ) -> Tuple[bool, str]:
         """
         Creates a new empty personal movie list for `user` in `mongodb["lists"]`
         and `mongodb["users"].lists`.
         """
         clean_name = (list_name or "").strip()
+        clean_desc = (description or "").strip()
         if not clean_name:
             return False, "List name is required."
 
@@ -589,6 +620,7 @@ class ActionService:
                 {
                     "owner": {"id": user_oid, "username": user.username},
                     "name": clean_name,
+                    "description": clean_desc,
                     "movies": [],
                 }
             )
@@ -600,7 +632,13 @@ class ActionService:
                     str(item.get("name") or "").lower() == clean_name.lower()
                     for item in user_lists
                 ):
-                    user_lists.append({"name": clean_name, "movies": []})
+                    user_lists.append(
+                        {
+                            "name": clean_name,
+                            "description": clean_desc,
+                            "movies": [],
+                        }
+                    )
                     db["users"].update_one(
                         {"_id": user_doc["_id"]},
                         {"$set": {"lists": user_lists}},
@@ -891,5 +929,62 @@ class ActionService:
             email=clean_email,
             lists_count=user.lists_count,
             is_live_db=user.is_live_db,
+            avatar_url=user.avatar_url,
         )
         return True, updated, f"Profile updated for @{clean_user}."
+
+    def update_user_avatar(
+        self,
+        user: UserSession,
+        source_path_or_url: str,
+    ) -> Tuple[bool, Optional[UserSession], str]:
+        """
+        Uploads/sets the authenticated user's profile photo from a local file path
+        (copied into `public/avatars/`) or an HTTP(S) image URL, and persists
+        `avatar_url` in MongoDB.
+        """
+        raw = (source_path_or_url or "").strip()
+        if not raw:
+            return False, None, "Please enter a local image path or image URL."
+
+        if raw.lower().startswith(("http://", "https://")):
+            final_avatar = raw
+        else:
+            from pathlib import Path
+            from PIL import Image
+
+            src_path = Path(raw).expanduser()
+            if not src_path.is_file():
+                return False, None, f"Image file not found: {raw}"
+            try:
+                avatars_dir = Path(__file__).resolve().parent.parent / "public" / "avatars"
+                avatars_dir.mkdir(parents=True, exist_ok=True)
+                safe_name = re.sub(r"[^a-zA-Z0-9_.-]+", "_", user.username.lower()) or "user"
+                dest_path = avatars_dir / f"{safe_name}.png"
+                with Image.open(src_path) as im:
+                    im.convert("RGB").save(dest_path, format="PNG")
+                final_avatar = str(dest_path)
+            except Exception as exc:
+                return False, None, f"Could not process image file: {exc}"
+
+        db = self._get_mongo_db()
+        if db is not None:
+            try:
+                rx_user = {"$regex": f"^{re.escape(user.username)}$", "$options": "i"}
+                db["users"].update_one(
+                    {"username": rx_user},
+                    {"$set": {"avatar_url": final_avatar}},
+                )
+            except Exception as exc:
+                return False, None, f"Error saving profile photo in MongoDB: {exc}"
+
+        updated = UserSession(
+            user_id=user.user_id,
+            username=user.username,
+            email=user.email,
+            favorite_genres=list(user.favorite_genres),
+            lists_count=user.lists_count,
+            is_live_db=user.is_live_db,
+            avatar_url=final_avatar,
+        )
+        return True, updated, "Profile photo updated."
