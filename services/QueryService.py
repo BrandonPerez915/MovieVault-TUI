@@ -211,9 +211,7 @@ MODULES: List[Dict[str, str]] = [
 
 
 QUERIES: List[QuerySpec] = [
-    # =========================================================================
-    # SECTION 1: MOVIE AND REVIEW SEARCH (MONGODB REQS 1-6)
-    # =========================================================================
+    # ------------- SECTION 1: MOVIE AND REVIEW SEARCH (MONGODB REQS 1-6) -------------
     QuerySpec(
         id="mongo_req_1",
         req_number=1,
@@ -225,11 +223,11 @@ QUERIES: List[QuerySpec] = [
             "filtered by decade range and language, ordered by impact/popularity DESC (10 per page)."
         ),
         params=[
-            QueryParam("title", "Title", "Godfather", "Term in title..."),
-            QueryParam("start_decade", "Start Decade", "1970", "e.g. 1970"),
-            QueryParam("end_decade", "End Decade", "2020", "e.g. 2020"),
-            QueryParam("language", "Language", "en", "e.g. en, es, fr, ko"),
-            QueryParam("page", "Page (10/page)", "1", "e.g. 1"),
+            QueryParam("title", "Title", "Godfather", "Default: Godfather — e.g. Godfather, Inception"),
+            QueryParam("start_decade", "Start Decade", "1970", "Default: 1970 — e.g. 1970, 1990"),
+            QueryParam("end_decade", "End Decade", "2020", "Default: 2020 — e.g. 2020"),
+            QueryParam("language", "Language", "en", "Default: en — e.g. en, es, fr, ko"),
+            QueryParam("page", "Page (10/page)", "1", "Default: 1 — e.g. 1"),
         ],
         expected_columns=["movie_title", "release_year", "avg_rating"],
     ),
@@ -244,10 +242,10 @@ QUERIES: List[QuerySpec] = [
             "(and optional director), ordered by impact DESC (10 per page)."
         ),
         params=[
-            QueryParam("genre", "Genre", "Drama", "e.g. Drama, Sci-Fi, Crime"),
-            QueryParam("country", "Country", "USA", "e.g. USA, Mexico, South Korea"),
-            QueryParam("director", "Director (Optional)", "", "e.g. Alfonso Cuarón"),
-            QueryParam("page", "Page (10/page)", "1", "e.g. 1"),
+            QueryParam("genre", "Genre", "Drama", "Default: Drama — e.g. Drama, Sci-Fi, Crime"),
+            QueryParam("country", "Country", "USA", "Default: USA — e.g. USA, Mexico, South Korea"),
+            QueryParam("director", "Director (Optional)", "", "Optional (empty = any) — e.g. Alfonso Cuarón"),
+            QueryParam("page", "Page (10/page)", "1", "Default: 1 — e.g. 1"),
         ],
         expected_columns=["movie_title", "release_year", "avg_rating"],
     ),
@@ -262,11 +260,11 @@ QUERIES: List[QuerySpec] = [
             "and produced in a decade range, ordered by impact DESC (10 per page)."
         ),
         params=[
-            QueryParam("min_rating", "Min Rating", "4.0", "e.g. 4.0"),
-            QueryParam("director", "Director", "Christopher Nolan", "Director name"),
-            QueryParam("start_decade", "Start Decade", "2000", "e.g. 2000"),
-            QueryParam("end_decade", "End Decade", "2020", "e.g. 2020"),
-            QueryParam("page", "Page (10/page)", "1", "e.g. 1"),
+            QueryParam("min_rating", "Min Rating", "4.0", "Default: 4.0 — range 0.5 to 5.0"),
+            QueryParam("director", "Director", "Christopher Nolan", "Default: Christopher Nolan — e.g. Christopher Nolan"),
+            QueryParam("start_decade", "Start Decade", "2000", "Default: 2000 — e.g. 2000"),
+            QueryParam("end_decade", "End Decade", "2020", "Default: 2020 — e.g. 2020"),
+            QueryParam("page", "Page (10/page)", "1", "Default: 1 — e.g. 1"),
         ],
         expected_columns=["movie_title", "release_year", "avg_rating"],
     ),
@@ -281,8 +279,8 @@ QUERIES: List[QuerySpec] = [
             "ordered by impact DESC (10 per page)."
         ),
         params=[
-            QueryParam("keywords", "Synopsis keywords", "dream", "e.g. dream, mafia, space"),
-            QueryParam("page", "Page (10/page)", "1", "e.g. 1"),
+            QueryParam("keywords", "Synopsis keywords", "dream", "Default: dream — e.g. dream, mafia, space"),
+            QueryParam("page", "Page (10/page)", "1", "Default: 1 — e.g. 1"),
         ],
         expected_columns=["movie_title", "release_year", "avg_rating", "synopsis"],
     ),
@@ -297,9 +295,9 @@ QUERIES: List[QuerySpec] = [
             "descending by likes and comments count (10 per page)."
         ),
         params=[
-            QueryParam("movie_title", "Movie Title", "Inception", "Movie title"),
-            QueryParam("keywords", "Keywords", "masterpiece", "Term in review"),
-            QueryParam("page", "Page (10/page)", "1", "e.g. 1"),
+            QueryParam("movie_title", "Movie Title", "Inception", "Default: Inception — e.g. Inception"),
+            QueryParam("keywords", "Keywords", "masterpiece", "Default: masterpiece — term in review"),
+            QueryParam("page", "Page (10/page)", "1", "Default: 1 — e.g. 1"),
         ],
         expected_columns=[
             "movie_title",
@@ -322,16 +320,14 @@ QUERIES: List[QuerySpec] = [
             "descending by impact (10 results per page)."
         ),
         params=[
-            QueryParam("actor_name", "Actor / Actress", "Leonardo DiCaprio", "Actor name"),
-            QueryParam("director_name", "Director", "Martin Scorsese", "Director name"),
-            QueryParam("page", "Page (10/page)", "1", "e.g. 1"),
+            QueryParam("actor_name", "Actor / Actress", "Leonardo DiCaprio", "Default: Leonardo DiCaprio — e.g. Leonardo DiCaprio"),
+            QueryParam("director_name", "Director", "Martin Scorsese", "Default: Martin Scorsese — e.g. Martin Scorsese"),
+            QueryParam("page", "Page (10/page)", "1", "Default: 1 — e.g. 1"),
         ],
         expected_columns=["movie_title", "release_year", "avg_rating"],
     ),
 
-    # =========================================================================
-    # SECTION 2: TALENT AND WRAPPED STATISTICS (MONGODB REQS 7–8)
-    # =========================================================================
+    # ------------- SECTION 2: TALENT AND WRAPPED STATISTICS (MONGODB REQS 7–8) -------------
     QuerySpec(
         id="mongo_req_7",
         req_number=7,
@@ -343,7 +339,7 @@ QUERIES: List[QuerySpec] = [
             "decade distribution, genre distribution, frequent collaborators, and active status."
         ),
         params=[
-            QueryParam("actor_name", "Actor / Actress", "Leonardo DiCaprio", "Actor name"),
+            QueryParam("actor_name", "Actor / Actress", "Leonardo DiCaprio", "Default: Leonardo DiCaprio — e.g. Leonardo DiCaprio"),
         ],
         expected_columns=[
             "actor_name",
@@ -381,9 +377,7 @@ QUERIES: List[QuerySpec] = [
         ],
     ),
 
-    # =========================================================================
-    # SECTION 3: USER ACTIVITY AND HISTORY (CASSANDRA REQS 1–8)
-    # =========================================================================
+    # ------------- SECTION 3: USER ACTIVITY AND HISTORY (CASSANDRA REQS 1–8) -------------
     QuerySpec(
         id="cassandra_req_1",
         req_number=1,
@@ -397,8 +391,8 @@ QUERIES: List[QuerySpec] = [
         ),
         params=[
             QueryParam("username", "Username (empty = active)", "", "Username"),
-            QueryParam("start_date", "Start Date (Optional)", "", "YYYY-MM-DD (empty = 30 days)"),
-            QueryParam("end_date", "End Date (Optional)", "", "YYYY-MM-DD (empty = today)"),
+            QueryParam("start_date", "Start Date (Optional)", "", "Optional: YYYY-MM-DD (default: last 30 days)"),
+            QueryParam("end_date", "End Date (Optional)", "", "Optional: YYYY-MM-DD (default: today)"),
         ],
         expected_columns=["watch_date", "movie_title", "my_rating", "liked", "viewed_on"],
     ),
@@ -415,9 +409,9 @@ QUERIES: List[QuerySpec] = [
         ),
         params=[
             QueryParam("username", "Username (empty = active)", "", "Username"),
-            QueryParam("genre", "Genre", "Sci-Fi", "e.g. Sci-Fi, Drama, Crime"),
-            QueryParam("start_date", "Start Date (Optional)", "", "YYYY-MM-DD"),
-            QueryParam("end_date", "End Date (Optional)", "", "YYYY-MM-DD"),
+            QueryParam("genre", "Genre", "Sci-Fi", "Default: Sci-Fi — e.g. Sci-Fi, Drama, Crime"),
+            QueryParam("start_date", "Start Date (Optional)", "", "Optional: YYYY-MM-DD (default: last 30 days)"),
+            QueryParam("end_date", "End Date (Optional)", "", "Optional: YYYY-MM-DD (default: today)"),
         ],
         expected_columns=["watch_date", "movie_title", "my_rating", "like", "viewed_on"],
     ),
@@ -434,8 +428,8 @@ QUERIES: List[QuerySpec] = [
         ),
         params=[
             QueryParam("username", "Username (empty = active)", "", "Username"),
-            QueryParam("start_date", "Start Date (Optional)", "", "YYYY-MM-DD"),
-            QueryParam("end_date", "End Date (Optional)", "", "YYYY-MM-DD"),
+            QueryParam("start_date", "Start Date (Optional)", "", "Optional: YYYY-MM-DD (default: last 30 days)"),
+            QueryParam("end_date", "End Date (Optional)", "", "Optional: YYYY-MM-DD (default: today)"),
         ],
         expected_columns=[
             "movie_title",
@@ -459,10 +453,10 @@ QUERIES: List[QuerySpec] = [
         ),
         params=[
             QueryParam("username", "Username (empty = active)", "", "Username"),
-            QueryParam("min_rating", "Min Rating", "3.5", "e.g. 3.5"),
-            QueryParam("max_rating", "Max Rating", "5.0", "e.g. 5.0"),
-            QueryParam("start_date", "Start Date (Optional)", "", "YYYY-MM-DD"),
-            QueryParam("end_date", "End Date (Optional)", "", "YYYY-MM-DD"),
+            QueryParam("min_rating", "Min Rating", "3.5", "Default: 3.5 — range 0.5 to 5.0"),
+            QueryParam("max_rating", "Max Rating", "5.0", "Default: 5.0 — range 0.5 to 5.0"),
+            QueryParam("start_date", "Start Date (Optional)", "", "Optional: YYYY-MM-DD (default: last 30 days)"),
+            QueryParam("end_date", "End Date (Optional)", "", "Optional: YYYY-MM-DD (default: today)"),
         ],
         expected_columns=[
             "movie_title",
@@ -484,7 +478,7 @@ QUERIES: List[QuerySpec] = [
             "ordered primarily by date DESC and secondarily by rating DESC."
         ),
         params=[
-            QueryParam("movie_title", "Movie Title", "Inception", "Exact movie title"),
+            QueryParam("movie_title", "Movie Title", "Inception", "Default: Inception — exact movie title"),
         ],
         expected_columns=[
             "movie_title",
@@ -509,8 +503,8 @@ QUERIES: List[QuerySpec] = [
         ),
         params=[
             QueryParam("username", "Username (empty = active)", "", "Username"),
-            QueryParam("start_date", "Start Date (Optional)", "", "YYYY-MM-DD"),
-            QueryParam("end_date", "End Date (Optional)", "", "YYYY-MM-DD"),
+            QueryParam("start_date", "Start Date (Optional)", "", "Optional: YYYY-MM-DD (default: last 30 days)"),
+            QueryParam("end_date", "End Date (Optional)", "", "Optional: YYYY-MM-DD (default: today)"),
         ],
         expected_columns=[
             "username",
@@ -534,8 +528,8 @@ QUERIES: List[QuerySpec] = [
         ),
         params=[
             QueryParam("username", "Username (empty = active)", "", "Username"),
-            QueryParam("start_date", "Start Date (Optional)", "", "YYYY-MM-DD"),
-            QueryParam("end_date", "End Date (Optional)", "", "YYYY-MM-DD"),
+            QueryParam("start_date", "Start Date (Optional)", "", "Optional: YYYY-MM-DD (default: last 30 days)"),
+            QueryParam("end_date", "End Date (Optional)", "", "Optional: YYYY-MM-DD (default: today)"),
         ],
         expected_columns=[
             "username",
@@ -561,8 +555,8 @@ QUERIES: List[QuerySpec] = [
         ),
         params=[
             QueryParam("username", "Username (empty = active)", "", "Username"),
-            QueryParam("start_date", "Start Date (Optional)", "", "YYYY-MM-DD"),
-            QueryParam("end_date", "End Date (Optional)", "", "YYYY-MM-DD"),
+            QueryParam("start_date", "Start Date (Optional)", "", "Optional: YYYY-MM-DD (default: last 30 days)"),
+            QueryParam("end_date", "End Date (Optional)", "", "Optional: YYYY-MM-DD (default: today)"),
         ],
         expected_columns=[
             "username",
@@ -572,9 +566,7 @@ QUERIES: List[QuerySpec] = [
         ],
     ),
 
-    # =========================================================================
-    # SECTION 4: RECOMMENDATIONS AND DISCOVERY (DGRAPH REQS 1–8)
-    # =========================================================================
+    # ------------- SECTION 4: RECOMMENDATIONS AND DISCOVERY (DGRAPH REQS 1–8) -------------
     QuerySpec(
         id="dgraph_req_1",
         req_number=1,
@@ -588,7 +580,7 @@ QUERIES: List[QuerySpec] = [
         ),
         params=[
             QueryParam("username", "Username (empty = active)", "", "Username"),
-            QueryParam("favorite_movie_title", "Favorite Movie", "Inception", "Movie title"),
+            QueryParam("favorite_movie_title", "Favorite Movie", "Inception", "Default: Inception — e.g. Inception"),
         ],
         expected_columns=["username", "followers", "views_count"],
     ),
@@ -605,7 +597,7 @@ QUERIES: List[QuerySpec] = [
         ),
         params=[
             QueryParam("username", "Username (empty = active)", "", "Username"),
-            QueryParam("min_rating", "Min Rating", "4.0", "e.g. 4.0"),
+            QueryParam("min_rating", "Min Rating", "4.0", "Default: 4.0 — range 0.5 to 5.0"),
         ],
         expected_columns=["movie_title", "release_year", "friends_rating"],
     ),
@@ -622,8 +614,8 @@ QUERIES: List[QuerySpec] = [
         ),
         params=[
             QueryParam("username", "Username (empty = active)", "", "Username"),
-            QueryParam("list_name", "Personal List", "Watchlist", "List name"),
-            QueryParam("selected_movie_title", "Movie in List", "Interstellar", "Base movie title"),
+            QueryParam("list_name", "Personal List", "Watchlist", "Default: Watchlist — your list name"),
+            QueryParam("selected_movie_title", "Movie in List", "Interstellar", "Default: Interstellar — base movie title"),
         ],
         expected_columns=["movie_title", "release_year", "genre", "impact_score"],
     ),
@@ -656,7 +648,7 @@ QUERIES: List[QuerySpec] = [
         ),
         params=[
             QueryParam("username", "Username (empty = active)", "", "Username"),
-            QueryParam("list_name", "List to exclude", "Watchlist", "Personal list name"),
+            QueryParam("list_name", "List to exclude", "Watchlist", "Default: Watchlist — personal list name"),
         ],
         expected_columns=["movie_title", "release_year", "shared_actor", "impact_score"],
     ),
@@ -673,8 +665,8 @@ QUERIES: List[QuerySpec] = [
         ),
         params=[
             QueryParam("username", "Username (empty = active)", "", "Username"),
-            QueryParam("min_rating", "Min Rating", "4.0", "e.g. 4.0"),
-            QueryParam("min_shared_movies", "Min Shared Movies", "5", "e.g. 5"),
+            QueryParam("min_rating", "Min Rating", "4.0", "Default: 4.0 — range 0.5 to 5.0"),
+            QueryParam("min_shared_movies", "Min Shared Movies", "5", "Default: 5 — e.g. 5"),
         ],
         expected_columns=["username", "followers", "views_count", "shared_movies_count"],
     ),
@@ -691,7 +683,7 @@ QUERIES: List[QuerySpec] = [
         ),
         params=[
             QueryParam("username", "Username (empty = active)", "", "Username"),
-            QueryParam("list_name", "Personal List", "Watchlist", "Your list name"),
+            QueryParam("list_name", "Personal List", "Watchlist", "Default: Watchlist — your list name"),
         ],
         expected_columns=["movie_title", "release_year", "duration_minutes", "avg_rating"],
     ),
@@ -769,9 +761,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
     query_language = "json"
     raw_query = ""
 
-    # -------------------------------------------------------------------------
-    # MONGODB (Reqs 1–8)
-    # -------------------------------------------------------------------------
+    # -------------------------- MONGODB (Reqs 1–8) --------------------------
     if spec.database == "MongoDB":
         db = None
         try:
@@ -982,9 +972,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
             total_count = m_res.total
             mongo_source = m_res.source
 
-    # -------------------------------------------------------------------------
-    # CASSANDRA (Reqs 1–8)
-    # -------------------------------------------------------------------------
+    # -------------------------- CASSANDRA (Reqs 1–8) --------------------------
     elif spec.database == "Cassandra":
         session = None
         try:
@@ -1097,9 +1085,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
                 f"-- username={effective_username!r}, start_date={start_date!r}, end_date={end_date!r}"
             )
 
-    # -------------------------------------------------------------------------
-    # DGRAPH (Reqs 1–8)
-    # -------------------------------------------------------------------------
+    # -------------------------- DGRAPH (Reqs 1–8) --------------------------
     elif spec.database == "Dgraph":
         client = None
         try:

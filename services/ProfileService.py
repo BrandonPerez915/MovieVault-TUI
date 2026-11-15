@@ -32,6 +32,7 @@ class UserProfile:
     followers_count: int = 0
     following_count: int = 0
     is_following: bool = False
+    avatar_url: str = ""
 
 
 @dataclass
@@ -39,6 +40,7 @@ class UserListSummary:
     """Personal movie list belonging to a user."""
 
     name: str
+    description: str = ""
     movies: List[MovieSummary] = field(default_factory=list)
 
     @property
@@ -216,6 +218,7 @@ class ProfileService:
                 followers_count=len(followers_list),
                 following_count=len(following_list),
                 is_following=is_following,
+                avatar_url=str(user_doc.get("avatar_url") or "") if user_doc else "",
             )
         except Exception:
             return UserProfile(username=clean_target)
@@ -389,17 +392,20 @@ class ProfileService:
 
         try:
             rx_user = {"$regex": f"^{re.escape(clean_user)}$", "$options": "i"}
-            merged_lists: Dict[str, Tuple[str, Dict[str, Tuple[Any, str, str]]]] = {}
+            merged_lists: Dict[str, List[Any]] = {}
 
-            # 1. Dedicated `lists` collection
+            # Dedicated `lists` collection
             for ldoc in db["lists"].find({"owner.username": rx_user}):
                 lname = str(ldoc.get("name") or "").strip()
                 if not lname:
                     continue
+                ldesc = str(ldoc.get("description") or "").strip()
                 lkey = lname.lower()
                 if lkey not in merged_lists:
-                    merged_lists[lkey] = (lname, {})
-                movies_map = merged_lists[lkey][1]
+                    merged_lists[lkey] = [lname, ldesc, {}]
+                elif ldesc and not merged_lists[lkey][1]:
+                    merged_lists[lkey][1] = ldesc
+                movies_map = merged_lists[lkey][2]
                 for m in ldoc.get("movies") or []:
                     mtitle = str(m.get("title") or "").strip()
                     if mtitle and mtitle.lower() not in movies_map:
@@ -409,17 +415,20 @@ class ProfileService:
                             str(m.get("poster_url") or ""),
                         )
 
-            # 2. Embedded `lists` array in `users` collection
+            # Embedded `lists` array in `users` collection
             user_doc = db["users"].find_one({"username": rx_user}, {"lists": 1})
             if user_doc:
                 for ulist in user_doc.get("lists") or []:
                     lname = str(ulist.get("name") or "").strip()
                     if not lname:
                         continue
+                    ldesc = str(ulist.get("description") or "").strip()
                     lkey = lname.lower()
                     if lkey not in merged_lists:
-                        merged_lists[lkey] = (lname, {})
-                    movies_map = merged_lists[lkey][1]
+                        merged_lists[lkey] = [lname, ldesc, {}]
+                    elif ldesc and not merged_lists[lkey][1]:
+                        merged_lists[lkey][1] = ldesc
+                    movies_map = merged_lists[lkey][2]
                     for m in ulist.get("movies") or []:
                         mtitle = str(m.get("title") or "").strip()
                         if mtitle and mtitle.lower() not in movies_map:
@@ -430,12 +439,18 @@ class ProfileService:
                             )
 
             result: List[UserListSummary] = []
-            for canonical_name, movies_map in merged_lists.values():
+            for canonical_name, canonical_desc, movies_map in merged_lists.values():
                 movies = [
                     self._resolve_movie_summary(db, mid, mtitle, mposter)
                     for mid, mtitle, mposter in movies_map.values()
                 ]
-                result.append(UserListSummary(name=canonical_name, movies=movies))
+                result.append(
+                    UserListSummary(
+                        name=canonical_name,
+                        description=canonical_desc,
+                        movies=movies,
+                    )
+                )
             return result
         except Exception:
             return []

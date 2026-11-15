@@ -33,6 +33,7 @@ class UserSession:
     favorite_genres: List[str] = field(default_factory=list)
     lists_count: int = 0
     is_live_db: bool = True
+    avatar_url: str = ""
 
 
 def hash_password(raw_password: str) -> str:
