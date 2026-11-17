@@ -16,6 +16,7 @@ Delegates requirement execution directly to:
 
 from dataclasses import dataclass, field
 import json
+import re
 import time
 from typing import Any, Dict, List, Optional
 
@@ -27,6 +28,7 @@ from databases.mongodb.queries import (
 )
 from databases import MongoConnection, CassandraConnection, DgraphConnection
 from services.AuthService import AuthService
+from services.SettingsService import SettingsService
 
 
 class UnifiedDatabaseConnection:
@@ -738,11 +740,167 @@ def _parse_float(value: Optional[str], default: float) -> float:
         return default
 
 
+def _execute_social_query(query_id: str, params: Dict[str, str], t0: float) -> QueryResult:
+    """Executes Explore -> Social queries against MongoDB (`users`, `reviews`)."""
+    db = None
+    try:
+        hub = UnifiedDatabaseConnection.get_instance()
+        if hub and getattr(hub, "status", {}).get("mongodb") == "INITIALIZED":
+            db = hub.mongodb
+    except Exception:
+        pass
+    if db is None:
+        try:
+            mongo = MongoConnection()
+            db = mongo.database if mongo.initialized else None
+        except Exception:
+            db = None
+
+    if db is None:
+        elapsed = (time.perf_counter() - t0) * 1000.0
+        return QueryResult(
+            query_id=query_id,
+            module_id="social",
+            title=f"Social: {query_id}",
+            database="MongoDB",
+            explanation="Social discovery query against MongoDB.",
+            columns=[],
+            rows=[],
+            execution_ms=elapsed,
+            is_live=False,
+            error="MongoDB is not connected.",
+        )
+
+    rows: List[Dict[str, Any]] = []
+    columns: List[str] = []
+    title = "Social Results"
+
+    if query_id == "social_users":
+        title = "Social: Users Directory"
+        columns = ["username", "reviews_count", "watched_count", "lists_count", "followers_count"]
+        q = (params.get("username") or "").strip().lstrip("@")
+        filt: Dict[str, Any] = {}
+        if q:
+            filt["username"] = {"$regex": re.escape(q), "$options": "i"}
+        docs = list(
+            db["users"].find(
+                filt,
+                {"username": 1, "avatar_url": 1, "watched_movies": 1, "lists": 1, "followers": 1},
+            ).limit(50)
+        )
+        for u in docs:
+            uname = str(u.get("username") or "")
+            if not uname:
+                continue
+            rev_cnt = db["reviews"].count_documents(
+                {"owner.username": {"$regex": f"^{re.escape(uname)}$", "$options": "i"}}
+            )
+            rows.append(
+                {
+                    "username": uname,
+                    "avatar_url": str(u.get("avatar_url") or ""),
+                    "reviews_count": rev_cnt,
+                    "watched_count": len(u.get("watched_movies") or []),
+                    "lists_count": len(u.get("lists") or []),
+                    "followers_count": len(u.get("followers") or []),
+                }
+            )
+
+    elif query_id == "social_reviews":
+        title = "Social: Community Reviews"
+        columns = ["username", "movie_title", "rating", "likes", "created_at", "content"]
+        uname = (params.get("username") or "").strip().lstrip("@")
+        movie_title = (params.get("movie_title") or "").strip()
+        keywords = (params.get("keywords") or "").strip()
+        filt = {}
+        if uname:
+            filt["owner.username"] = {"$regex": re.escape(uname), "$options": "i"}
+        if movie_title:
+            filt["movie.title"] = {"$regex": re.escape(movie_title), "$options": "i"}
+        if keywords:
+            filt["content"] = {"$regex": re.escape(keywords), "$options": "i"}
+        docs = list(db["reviews"].find(filt).sort("created_at", -1).limit(50))
+        for d in docs:
+            owner = d.get("owner") or {}
+            movie = d.get("movie") or {}
+            created = d.get("created_at")
+            created_str = created.strftime("%Y-%m-%d") if hasattr(created, "strftime") else str(created or "")[:10]
+            rows.append(
+                {
+                    "username": str(owner.get("username") or "anonymous"),
+                    "movie_title": str(movie.get("title") or "Untitled"),
+                    "rating": float(d.get("rating") or 0.0),
+                    "likes": int(d.get("likes") or 0),
+                    "created_at": created_str,
+                    "content": str(d.get("content") or "").strip(),
+                    "_liked_by": list(d.get("liked_by") or []),
+                }
+            )
+
+    elif query_id == "social_recent_activity":
+        title = "Social: Recent User Activity"
+        columns = ["username", "action", "movie_title", "detail", "created_at"]
+        uname = (params.get("username") or "").strip().lstrip("@")
+        rev_filt: Dict[str, Any] = {}
+        if uname:
+            rev_filt["owner.username"] = {"$regex": f"^{re.escape(uname)}$", "$options": "i"}
+        rev_docs = list(db["reviews"].find(rev_filt).sort("created_at", -1).limit(40))
+        for d in rev_docs:
+            owner = d.get("owner") or {}
+            movie = d.get("movie") or {}
+            created = d.get("created_at")
+            created_str = created.strftime("%Y-%m-%d") if hasattr(created, "strftime") else str(created or "")[:10]
+            rows.append(
+                {
+                    "username": str(owner.get("username") or "anonymous"),
+                    "action": "Reviewed",
+                    "movie_title": str(movie.get("title") or "Untitled"),
+                    "detail": f"★ {float(d.get('rating') or 0.0):.1f} — {str(d.get('content') or '')[:60]}",
+                    "created_at": created_str,
+                }
+            )
+        if uname:
+            u_doc = db["users"].find_one(
+                {"username": {"$regex": f"^{re.escape(uname)}$", "$options": "i"}},
+                {"username": 1, "watched_movies": 1},
+            )
+            if u_doc:
+                for w in reversed(list(u_doc.get("watched_movies") or [])[-15:]):
+                    rows.append(
+                        {
+                            "username": str(u_doc.get("username") or uname),
+                            "action": "Watched",
+                            "movie_title": str(w.get("title") or "Untitled"),
+                            "detail": "Logged as watched",
+                            "created_at": str(w.get("watched_at") or "")[:10],
+                        }
+                    )
+
+    elapsed = (time.perf_counter() - t0) * 1000.0
+    return QueryResult(
+        query_id=query_id,
+        module_id="social",
+        title=title,
+        database="MongoDB",
+        explanation="Social discovery query against MongoDB.",
+        columns=columns,
+        rows=rows,
+        total_count=len(rows),
+        execution_ms=elapsed,
+        is_live=True,
+        query_language="json",
+        raw_query=json.dumps({"social_query": query_id, "params": params}),
+    )
+
+
 def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
     """
     Executes the requested requirement by delegating to the corresponding module
     (`mongo_queries.py`, `cassandra_queries.py`, or `dgraph_queries.py`).
     """
+    if query_id.startswith("social_"):
+        return _execute_social_query(query_id, params, time.perf_counter())
+
     spec = get_query_by_id(query_id)
     if spec is None:
         raise ValueError(f"Unknown requirement: {query_id}")
@@ -780,6 +938,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
         is_live = db is not None
         query_language = "json"
         page = max(1, _parse_int(params.get("page"), 1))
+        page_size = SettingsService().page_size
         movies_repo = MoviesRepository(database=db)
         m_res: Optional[MongoQueryResult] = None
 
@@ -790,7 +949,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
                 end_decade=_parse_int(params.get("end_decade"), 2020),
                 language=params.get("language", "en"),
                 page=page,
-                page_size=10,
+                page_size=page_size,
                 database=db,
             )
             raw_query = json.dumps(
@@ -804,7 +963,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
                         "end_decade": _parse_int(params.get("end_decade"), 2020),
                         "language": params.get("language", "en"),
                         "page": page,
-                        "page_size": 10,
+                        "page_size": page_size,
                     },
                 },
                 indent=2,
@@ -817,7 +976,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
                 country=params.get("country", ""),
                 director=params.get("director", ""),
                 page=page,
-                page_size=10,
+                page_size=page_size,
                 database=db,
             )
             raw_query = json.dumps(
@@ -830,7 +989,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
                         "country": params.get("country", ""),
                         "director": params.get("director", ""),
                         "page": page,
-                        "page_size": 10,
+                        "page_size": page_size,
                     },
                 },
                 indent=2,
@@ -844,7 +1003,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
                 start_decade=_parse_int(params.get("start_decade"), 2000),
                 end_decade=_parse_int(params.get("end_decade"), 2020),
                 page=page,
-                page_size=10,
+                page_size=page_size,
                 database=db,
             )
             raw_query = json.dumps(
@@ -858,7 +1017,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
                         "start_decade": _parse_int(params.get("start_decade"), 2000),
                         "end_decade": _parse_int(params.get("end_decade"), 2020),
                         "page": page,
-                        "page_size": 10,
+                        "page_size": page_size,
                     },
                 },
                 indent=2,
@@ -869,7 +1028,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
             m_res = movies_repo.by_synopsis_keywords(
                 keywords=params.get("keywords", ""),
                 page=page,
-                page_size=10,
+                page_size=page_size,
                 database=db,
             )
             raw_query = json.dumps(
@@ -880,7 +1039,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
                     "params": {
                         "keywords": params.get("keywords", ""),
                         "page": page,
-                        "page_size": 10,
+                        "page_size": page_size,
                     },
                 },
                 indent=2,
@@ -892,7 +1051,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
                 movie_title=params.get("movie_title", ""),
                 keywords=params.get("keywords", ""),
                 page=page,
-                page_size=10,
+                page_size=page_size,
                 database=db,
             )
             raw_query = json.dumps(
@@ -904,7 +1063,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
                         "movie_title": params.get("movie_title", ""),
                         "keywords": params.get("keywords", ""),
                         "page": page,
-                        "page_size": 10,
+                        "page_size": page_size,
                     },
                 },
                 indent=2,
@@ -916,7 +1075,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
                 actor_name=params.get("actor_name", ""),
                 director_name=params.get("director_name", ""),
                 page=page,
-                page_size=10,
+                page_size=page_size,
                 database=db,
             )
             raw_query = json.dumps(
@@ -928,7 +1087,7 @@ def execute_query(query_id: str, params: Dict[str, str]) -> QueryResult:
                         "actor_name": params.get("actor_name", ""),
                         "director_name": params.get("director_name", ""),
                         "page": page,
-                        "page_size": 10,
+                        "page_size": page_size,
                     },
                 },
                 indent=2,

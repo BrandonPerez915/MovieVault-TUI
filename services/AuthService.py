@@ -20,6 +20,7 @@ from pymongo.errors import DuplicateKeyError
 
 from databases.mongodb import MongoConnection
 from databases.dgraph import DgraphConnection
+from services.SettingsService import SettingsService
 
 DEMO_DEFAULT_PASSWORD = "demo123"
 DEFAULT_ADMIN_USERNAME = "admin"
@@ -254,6 +255,8 @@ class AuthService:
                 role=role,
             )
             self._current_session = session
+            if SettingsService().remember_session:
+                SettingsService().set("last_username", session.username)
             return True, session, f"Successfully logged in as @{clean_user}"
         except Exception as exc:
             return False, None, f"Error querying MongoDB: {exc}"
@@ -323,6 +326,8 @@ class AuthService:
                 is_live_db=True,
             )
             self._current_session = session
+            if SettingsService().remember_session:
+                SettingsService().set("last_username", session.username)
             return True, session, f"User @{clean_user} successfully saved in MongoDB."
         except DuplicateKeyError:
             return (
@@ -354,6 +359,8 @@ class AuthService:
                 role=role,
             )
             self._current_session = session
+            if SettingsService().remember_session:
+                SettingsService().set("last_username", session.username)
             return True, session, f"Active user changed to @{username}"
         except Exception as exc:
             return False, None, f"Error switching user: {exc}"
@@ -365,3 +372,4 @@ class AuthService:
     def logout(self) -> None:
         """Clears the current user session."""
         self._current_session = None
+        SettingsService().set("last_username", "")

@@ -20,6 +20,7 @@ from databases.mongodb import MongoConnection
 from databases.dgraph import DgraphConnection
 from services.AuthService import UserSession
 from services.CatalogService import CatalogService
+from services.SettingsService import SettingsService
 
 
 def _safe_object_id(hex_id: Optional[str]) -> ObjectId:
@@ -126,7 +127,7 @@ class ActionService:
         if already_watched:
             return False
 
-        if movie_doc is not None:
+        if movie_doc is not None and SettingsService().public_activity:
             db["movies"].update_one(
                 {"_id": movie_oid},
                 {"$addToSet": {"watched_by": username}},

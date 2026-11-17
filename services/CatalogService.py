@@ -14,6 +14,7 @@ Responsibilities:
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 import math
 import re
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
@@ -587,6 +588,7 @@ class CatalogService:
             "impact_score": impact_score,
             "available_streaming": sorted(streaming_set),
             "runtime": runtime,
+            "added_date": datetime.now(timezone.utc),
         }
 
         try:

@@ -1,0 +1,11 @@
+{
+  "theme": "rose-pine",
+  "figlet_headers": true,
+  "posters_enabled": true,
+  "default_tab": "tab-home",
+  "page_size": 10,
+  "tmdb_fallback": true,
+  "public_activity": true,
+  "remember_session": true,
+  "last_username": "brandon"
+}
