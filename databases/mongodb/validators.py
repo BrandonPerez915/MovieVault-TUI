@@ -195,6 +195,10 @@ MOVIES_VALIDATOR: Dict[str, Any] = {
                 "items": {"bsonType": "string"},
                 "description": "Usernames of users who marked this movie as watched.",
             },
+            "added_date": {
+                "bsonType": "date",
+                "description": "Timestamp when the movie was added to MongoDB.",
+            },
         },
     }
 }

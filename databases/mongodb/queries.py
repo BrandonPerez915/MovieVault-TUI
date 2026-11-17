@@ -37,6 +37,7 @@ from config import MONGO_DATABASE_NAME, MONGO_URL
 from databases.mongodb.connection import MongoConnection
 from databases.mongodb.schema import MongoSchema
 from services.CatalogService import CatalogService
+from services.SettingsService import SettingsService
 
 try:
     global_database: Optional[Database] = MongoConnection.instance(
@@ -46,6 +47,7 @@ except Exception:
     global_database = None
 
 catalog_service = CatalogService()
+settings_service = SettingsService()
 
 
 @dataclass
@@ -373,7 +375,7 @@ class MoviesRepository:
             source = "mongodb"
 
             # If no results found, attempt to fetch movies by title from TMDB and cache in MongoDB
-            if total == 0 and page == 1 and title:
+            if total == 0 and page == 1 and title and settings_service.tmdb_fallback:
                 added = self.catalog_service.fallback_by_title(
                     active_database, title, limit=page_size
                 )
@@ -429,7 +431,7 @@ class MoviesRepository:
             )
             source = "mongodb"
 
-            if total == 0 and page == 1 and (genre or country):
+            if total == 0 and page == 1 and (genre or country) and settings_service.tmdb_fallback:
                 added = self.catalog_service.fallback_by_genre_country(
                     active_database, genre, country, director, limit=page_size
                 )
@@ -484,7 +486,7 @@ class MoviesRepository:
             )
             source = "mongodb"
 
-            if total == 0 and page == 1 and director:
+            if total == 0 and page == 1 and director and settings_service.tmdb_fallback:
 
                 added = self.catalog_service.fallback_by_rating_director_decades(
                     active_database,
@@ -536,7 +538,7 @@ class MoviesRepository:
             )
             source = "mongodb"
 
-            if total == 0 and page == 1 and keywords:
+            if total == 0 and page == 1 and keywords and settings_service.tmdb_fallback:
                 added = self.catalog_service.fallback_by_synopsis_keywords(
                     active_database, keywords, limit=page_size
                 )
@@ -655,7 +657,7 @@ class MoviesRepository:
             )
             source = "mongodb"
 
-            if total == 0 and page == 1 and (actor or director):
+            if total == 0 and page == 1 and (actor or director) and settings_service.tmdb_fallback:
                 added = self.catalog_service.fallback_by_actor_director(
                     active_database, actor, director, limit=page_size
                 )
@@ -699,7 +701,7 @@ class MoviesRepository:
             match_filter: Dict[str, Any] = {"cast.name": resolved_name}
             source = "mongodb"
 
-            if active_database["movies"].count_documents(match_filter) == 0:
+            if active_database["movies"].count_documents(match_filter) == 0 and settings_service.tmdb_fallback:
                 added = self.catalog_service.fallback_actor_filmography(
                     active_database, actor_name, limit=12
                 )
