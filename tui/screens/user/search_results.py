@@ -20,6 +20,7 @@ from textual.worker import get_current_worker
 
 from services.CatalogService import MovieSummary
 from services.QueryService import QueryResult, execute_query
+from services.SettingsService import SettingsService
 from tui.screens.user.movie_detail import MovieDetailScreen
 from tui.toast import show_success_toast
 from tui.widgets.movie_card import MovieCard
@@ -57,7 +58,7 @@ class SearchResultsScreen(Screen):
                 yield Static("", id="search-summary-banner")
 
             yield StateMessage(id="search-state-msg")
-            yield MovieGrid(page_size=10, id="search-results-grid")
+            yield MovieGrid(page_size=SettingsService().page_size, id="search-results-grid")
 
     def on_mount(self) -> None:
         self._run_page(self._page)
@@ -99,7 +100,7 @@ class SearchResultsScreen(Screen):
             summaries,
             page=self._page,
             total=result.total_count,
-            page_size=10,
+            page_size=SettingsService().page_size,
         )
 
         if not summaries:

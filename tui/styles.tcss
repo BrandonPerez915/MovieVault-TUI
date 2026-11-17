@@ -37,11 +37,16 @@ Toast.-information {
     border-left: thick #16a34a;
 }
 
+Toast.-information .toast--title {
+    color: #15803d;
+    text-style: bold;
+}
+
 /* Header & Status Bar */
 #top-bar {
     dock: top;
     height: 3;
-    margin-top: 1;
+    margin-top: 0;
     background: #161b22;
     border-top: solid #161b22;
     border-bottom: solid #30363d;
@@ -78,7 +83,7 @@ Toast.-information {
 
 UserMenuModal {
     align: right top;
-    padding: 4 2 0 0;
+    padding: 0;
     background: rgba(0, 0, 0, 0.35);
 }
 
@@ -184,7 +189,7 @@ AuthScreen {
 }
 
 /* Modals (UserSwitchModal, ReviewMovieModal, ManageListModal, SocialActionModal, HelpScreen, etc.) */
-UserSwitchModal, ReviewMovieModal, ManageListModal, SocialActionModal, HelpScreen, WrappedModal, EditProfileModal, UploadAvatarModal, FollowListModal, CreateListModal, VisitProfileModal, SearchReviewsModal, ConfirmModal, AddMovieToListModal {
+UserSwitchModal, ReviewMovieModal, ManageListModal, SocialActionModal, HelpScreen, WrappedModal, EditProfileModal, UploadAvatarModal, FollowListModal, CreateListModal, VisitProfileModal, SearchReviewsModal, ConfirmModal, AddMovieToListModal, AdminEditModal, AdminEntityDetailModal {
     align: center middle;
 }
 
@@ -360,7 +365,8 @@ MovieGrid {
 }
 
 .pagination-bar {
-    height: 3;
+    height: auto;
+    min-height: 3;
     background: #161b22;
     border-top: solid #30363d;
     padding: 0 2;
@@ -368,6 +374,9 @@ MovieGrid {
 }
 
 .page-btn {
+    width: auto;
+    min-width: 5;
+    height: 3;
     margin: 0 2;
 }
 
@@ -377,20 +386,20 @@ MovieGrid {
 }
 
 /* User HomeScreen & Tabs */
-#user-tabs {
+#user-tabs, #admin-tabs {
     height: 1fr;
     margin-top: 1;
 }
 
-#user-tabs Tabs {
+#user-tabs Tabs, #admin-tabs Tabs {
     width: 100%;
 }
 
-#user-tabs #tabs-list {
+#user-tabs #tabs-list, #admin-tabs #tabs-list {
     width: 100%;
 }
 
-#user-tabs Tab {
+#user-tabs Tab, #admin-tabs Tab {
     width: 1fr;
     content-align: center middle;
 }
@@ -482,7 +491,8 @@ MovieGrid {
 .query-form-card,
 #search-form-card,
 #diary-form-card,
-#rec-form-card {
+#rec-form-card,
+#social-form-card {
     width: 86;
     height: auto;
     background: #161b22;
@@ -492,7 +502,8 @@ MovieGrid {
 
 #search-dynamic-fields,
 #diary-dynamic-fields,
-#rec-dynamic-fields {
+#rec-dynamic-fields,
+#social-dynamic-fields {
     height: auto;
 }
 
@@ -611,7 +622,8 @@ MovieGrid {
     margin-right: 1;
 }
 
-#search-summary-banner {
+#search-summary-banner,
+#query-summary-banner {
     width: auto;
     height: 3;
     content-align: left middle;
@@ -894,6 +906,10 @@ MovieGrid {
     margin-left: 1;
 }
 
+#btn-toggle-inspector {
+    margin-left: 1;
+}
+
 #results-box {
     height: 1fr;
     border: round #30363d;
@@ -933,9 +949,328 @@ MovieGrid {
     background: #0d1117;
 }
 
-/* Admin Interactive Query Console & Seed Tab */
-#admin-tabs {
+#admin-panel-scroll {
     height: 1fr;
+    padding: 1 2;
+}
+
+#admin-panel-figlet {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+#admin-panel-toolbar {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+#admin-panel-spacer, #console-toolbar-spacer {
+    width: 1fr;
+    height: 1;
+}
+
+#admin-health-cards, #admin-catalog-cards {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+.admin-stat-card {
+    width: 1fr;
+    height: auto;
+    background: #161b22;
+    border: round #30363d;
+    padding: 1 2;
+    margin-right: 1;
+}
+
+.admin-stat-title {
+    color: #8b949e;
+    margin-bottom: 1;
+}
+
+.admin-stat-val {
+    text-style: bold;
+    color: #e6edf3;
+}
+
+.admin-stat-card-clickable:hover, .admin-stat-card-clickable:focus {
+    border: round #58a6ff;
+    background: #1c2128;
+}
+
+#admin-quick-actions {
+    width: 100%;
+    height: auto;
+    margin-top: 1;
+}
+
+#admin-quick-actions Button {
+    margin-right: 1;
+}
+
+#admin-movies-browser {
+    height: 1fr;
+    padding: 1 2;
+}
+
+#admin-movies-topbar {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+#admin-movies-browser-title {
+    width: 1fr;
+    margin: 0 2;
+    content-align: left middle;
+}
+
+#inp-admin-movies-filter {
+    width: 36;
+}
+
+#admin-movies-split {
+    width: 100%;
+    height: 1fr;
+}
+
+#admin-movies-list-pane {
+    width: 42;
+    height: 1fr;
+    border: round #30363d;
+    background: #161b22;
+    padding: 1;
+    margin-right: 1;
+}
+
+#admin-movies-listview {
+    height: 1fr;
+    background: #0d1117;
+}
+
+#admin-movies-preview-pane {
+    width: 1fr;
+    height: 1fr;
+    border: round #30363d;
+    background: #161b22;
+    padding: 1 2;
+}
+
+#admin-movie-hero-row {
+    width: 100%;
+    height: auto;
+    align-horizontal: center;
+    margin-bottom: 1;
+}
+
+#admin-movie-poster-wrap {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+#admin-movie-poster {
+    width: 24;
+    height: 15;
+}
+
+#admin-movie-title-line, #admin-movie-ids-line {
+    width: 100%;
+    height: auto;
+    text-align: center;
+}
+
+#admin-movie-ids-line {
+    margin-bottom: 1;
+}
+
+#admin-movie-actions-row {
+    width: 100%;
+    height: auto;
+    align-horizontal: center;
+    margin-bottom: 1;
+}
+
+#admin-movie-actions-row Button {
+    margin: 0 1;
+}
+
+.admin-clickable-card:hover, .admin-clickable-card:focus {
+    border: round #58a6ff;
+}
+
+#admin-edit-modal-card {
+    width: 88;
+    height: 82%;
+    max-height: 42;
+    border: double #58a6ff;
+}
+
+#admin-entity-modal-card {
+    width: 84;
+    max-height: 38;
+    border: double #58a6ff;
+}
+
+#admin-edit-scroll {
+    width: 100%;
+    height: 1fr;
+    padding-right: 1;
+    margin-bottom: 1;
+}
+
+#admin-edit-scroll Label {
+    margin-top: 1;
+    color: #79c0ff;
+    text-style: bold;
+}
+
+#admin-edit-scroll Input {
+    width: 100%;
+}
+
+#admin-edit-actions {
+    width: 100%;
+    height: auto;
+    align-horizontal: center;
+    margin-top: 1;
+}
+
+#admin-edit-actions Button {
+    margin: 0 2;
+}
+
+#admin-entity-scroll {
+    height: 1fr;
+    max-height: 26;
+    margin-bottom: 1;
+}
+
+#admin-entity-hero {
+    width: 100%;
+    height: auto;
+}
+
+#admin-entity-poster {
+    width: 20;
+    height: 12;
+    margin-right: 2;
+}
+
+#admin-entity-body {
+    width: 1fr;
+    height: auto;
+}
+
+.admin-edit-textarea {
+    width: 100%;
+    height: 7;
+    border: round #30363d;
+    margin-bottom: 1;
+}
+
+#ae-actions-row {
+    width: 100%;
+    height: auto;
+    align-horizontal: center;
+    margin-bottom: 1;
+}
+
+#ae-actions-row Button {
+    margin: 0 2;
+}
+
+#admin-entity-topbar-tag {
+    width: auto;
+    height: 1;
+    content-align: right middle;
+}
+
+#admin-entity-hero-col {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+#admin-entity-poster-wrap {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+#ae-poster {
+    width: 22;
+    height: 14;
+}
+
+#ae-title-line, #ae-id-line {
+    width: 100%;
+    height: auto;
+    text-align: center;
+}
+
+#ae-id-line {
+    margin-bottom: 1;
+}
+
+#ae-jump-row {
+    width: 100%;
+    height: auto;
+    align-horizontal: center;
+    margin-bottom: 1;
+}
+
+#ae-jump-row Button {
+    margin: 0 1;
+}
+
+#ae-body {
+    width: 100%;
+    height: auto;
+    background: #161b22;
+    border: round #30363d;
+    padding: 1 2;
+    margin-bottom: 1;
+}
+
+#ae-lists-section, #ae-primary-movies-section, #ae-secondary-movies-section, #ae-reviews-section, #ae-users-section {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+#ae-lists-split {
+    width: 100%;
+    height: 22;
+}
+
+#ae-lists-listview {
+    width: 34;
+    height: 100%;
+    border: round #30363d;
+    background: #0d1117;
+    margin-right: 1;
+}
+
+#ae-list-movies-col {
+    width: 1fr;
+    height: auto;
+}
+
+#ae-selected-list-info {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+#admin-movie-preview-body {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
 }
 
 #console-container, #seed-container {
@@ -994,18 +1329,16 @@ MovieGrid {
     margin-bottom: 1;
 }
 
-#console-outputs {
-    height: 1fr;
-    layout: horizontal;
+#console-toolbar Button {
+    margin-right: 1;
 }
 
 #console-table-box {
-    width: 1fr;
+    width: 100%;
     height: 1fr;
     border: round #30363d;
     background: #0d1117;
     padding: 0 1;
-    margin-right: 1;
 }
 
 #console-results-table {
@@ -1191,7 +1524,7 @@ ProfileView {
 
 .profile-subtab-body {
     height: auto;
-    padding: 1 0;
+    padding: 1 0 0 0;
 }
 
 ProfileView MovieGrid,

@@ -42,6 +42,7 @@ from services.AuthService import AuthService, UserSession
 from services.CatalogService import CatalogService, MovieSummary
 from services.PosterService import PosterService
 from services.ProfileService import ProfileService, UserListSummary
+from services.SettingsService import SettingsService
 from services.QueryService import (
     QueryResult,
     execute_query,
@@ -105,6 +106,26 @@ REC_MODES = [
     ("Unwatched movies in my list liked by friends", "dgraph_req_7"),
     ("Movies by recent Actor + Director combo", "dgraph_req_8"),
 ]
+
+SOCIAL_MODES = [
+    ("Search users by username", "social_users"),
+    ("Search community reviews (user, movie, keywords)", "social_reviews"),
+    ("Recent user & community activity", "social_recent_activity"),
+]
+
+SOCIAL_FIELDS: Dict[str, List[Tuple[str, str, str]]] = {
+    "social_users": [
+        ("username", "Username (optional, leave empty to list all):", "e.g. alex, sofia..."),
+    ],
+    "social_reviews": [
+        ("username", "Author username (optional):", "e.g. sofia_noir"),
+        ("movie_title", "Movie title (optional):", "e.g. Inception"),
+        ("keywords", "Review keywords (optional):", "e.g. cinematography"),
+    ],
+    "social_recent_activity": [
+        ("username", "Username (optional, leave empty for community feed):", "e.g. marco_scifi"),
+    ],
+}
 
 HOME_ASCII_BANNER = render_figlet_markup(
     "MovieVault",
@@ -223,6 +244,7 @@ class HomeScreen(Screen):
                                     ("Movies", "movies"),
                                     ("Activity", "activity"),
                                     ("Recommendations", "recs"),
+                                    ("Social", "social"),
                                 ],
                                 value="movies",
                                 allow_blank=False,
@@ -298,6 +320,29 @@ class HomeScreen(Screen):
                                     id="btn-run-recs",
                                 )
 
+                        with Vertical(id="social-form-card", classes="query-form-card"):
+                            yield FigletHeader(
+                                "Social",
+                                font="slant",
+                                color="#d2a8ff",
+                                subtitle="Discover users, search community reviews, and explore recent social activity.",
+                            )
+                            yield Label("Social query:", classes="field-label")
+                            yield Select(
+                                SOCIAL_MODES,
+                                value="social_users",
+                                allow_blank=False,
+                                id="social-mode-select",
+                                classes="form-mode-select",
+                            )
+                            yield Vertical(id="social-dynamic-fields")
+                            with Horizontal(classes="form-submit-row"):
+                                yield Button(
+                                    "🔍 Search [Enter]",
+                                    variant="success",
+                                    id="btn-run-social",
+                                )
+
             # -------------------- TAB 6: MY PROFILE --------------------
             with TabPane("Profile", id="tab-profile"):
                 with Vertical(classes="tab-page-container"):
@@ -315,9 +360,13 @@ class HomeScreen(Screen):
         self._rebuild_search_fields("mongo_req_1")
         self._rebuild_diary_fields("cassandra_req_1")
         self._rebuild_rec_fields("dgraph_req_2")
+        self._rebuild_social_fields("social_users")
         self._load_popular_page(1)
         self._load_my_lists()
         self._refresh_my_profile()
+        default_tab = SettingsService().default_tab
+        if default_tab != "tab-home":
+            self.query_one("#user-tabs", TabbedContent).active = default_tab
 
     def on_resize(self, event: Resize) -> None:
         new_per_row = self._calc_cards_per_row()
@@ -713,6 +762,7 @@ class HomeScreen(Screen):
         self.query_one("#search-form-card", Vertical).display = section == "movies"
         self.query_one("#diary-form-card", Vertical).display = section == "activity"
         self.query_one("#rec-form-card", Vertical).display = section == "recs"
+        self.query_one("#social-form-card", Vertical).display = section == "social"
 
     @on(Select.Changed, "#search-mode-select")
     def _on_search_mode_changed(self, event: Select.Changed) -> None:
@@ -819,6 +869,62 @@ class HomeScreen(Screen):
                 loading_msg="Computing personalized recommendations...",
                 empty_title="No recommendations available for this criterion yet.",
                 empty_hint="Rate movies, create lists, or follow other users to trigger suggestions.",
+            )
+        )
+
+    # =========================================================================
+    # EXPLORE: SOCIAL (USERS, REVIEWS, RECENT ACTIVITY)
+    # =========================================================================
+
+    @on(Select.Changed, "#social-mode-select")
+    def _on_social_mode_changed(self, event: Select.Changed) -> None:
+        self._rebuild_social_fields(str(event.value))
+
+    def _rebuild_social_fields(self, query_id: str) -> None:
+        if query_id in SOCIAL_FIELDS:
+            container = self.query_one("#social-dynamic-fields", Vertical)
+            container.remove_children()
+            for name, label_text, placeholder in SOCIAL_FIELDS[query_id]:
+                container.mount(Label(label_text, classes="field-label"))
+                container.mount(
+                    Input(
+                        placeholder=placeholder,
+                        name=name,
+                        classes="query-field-input social-field-input",
+                    )
+                )
+        else:
+            self._rebuild_query_fields("#social-dynamic-fields", query_id, "social-field-input")
+
+    @on(Button.Pressed, "#btn-run-social")
+    def _on_run_social_btn(self) -> None:
+        self._trigger_social()
+
+    @on(Input.Submitted, ".social-field-input")
+    def _on_submit_social_input(self) -> None:
+        self._trigger_social()
+
+    def _trigger_social(self) -> None:
+        query_id = str(self.query_one("#social-mode-select", Select).value)
+        if query_id in SOCIAL_FIELDS:
+            params: Dict[str, str] = {}
+            for inp in self.query(".social-field-input"):
+                if isinstance(inp, Input) and inp.name:
+                    params[inp.name] = inp.value.strip()
+        else:
+            params = self._collect_query_params(query_id, "social-field-input")
+
+        breadcrumb = self._build_breadcrumb(SOCIAL_MODES, query_id, params, "Social")
+        self.app.push_screen(
+            QueryResultsScreen(
+                query_id=query_id,
+                params=params,
+                section_title="👥 SOCIAL",
+                breadcrumb=breadcrumb,
+                back_label="◀ Back to Social [Esc]",
+                loading_msg="Searching social records...",
+                empty_title="No social records found.",
+                empty_hint="Try another username, movie title, or keyword.",
             )
         )
 
@@ -963,6 +1069,7 @@ class HomeScreen(Screen):
             ok, msg = ActionService().delete_list(session, list_name)
             if ok:
                 state.show_success(msg)
+                show_success_toast(self, msg)
                 self._selected_list_name = ""
                 self._load_my_lists()
                 self._refresh_my_profile()
@@ -1003,6 +1110,7 @@ class HomeScreen(Screen):
             )
             if ok:
                 state.show_success(msg)
+                show_success_toast(self, msg)
                 self._load_my_lists()
                 self._refresh_my_profile()
             else:
@@ -1040,11 +1148,15 @@ class HomeScreen(Screen):
         self.app.push_screen(HelpScreen())
 
     def action_open_settings(self) -> None:
-        def _after(posters_changed: Optional[bool]) -> None:
+        def _after(display_changed: Optional[bool]) -> None:
             self._refresh_header()
-            if posters_changed:
+            if display_changed:
+                self._update_foryou_row()
+                for idx in range(len(self._genre_sections)):
+                    self._update_genre_row(idx)
                 for poster in self.query(PosterImage):
                     poster.refresh_poster()
+                self._load_my_lists()
 
         self.app.push_screen(SettingsScreen(), _after)
 

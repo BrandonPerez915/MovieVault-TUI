@@ -117,11 +117,6 @@ class UserMenuModal(BaseModal[Optional[str]]):
     def _on_logout(self) -> None:
         self.dismiss("logout")
 
-    def on_click(self, event: Click) -> None:
-        card = self.query_one("#user-menu-card")
-        if not card.region.contains(event.screen_x, event.screen_y):
-            self.dismiss(None)
-
     def action_cancel(self) -> None:
         self.dismiss(None)
 

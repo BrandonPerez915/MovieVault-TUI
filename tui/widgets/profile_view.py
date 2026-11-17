@@ -357,7 +357,7 @@ class ProfileView(VerticalScroll):
                     Button(
                         "<",
                         id="btn-prof-rev-prev",
-                        classes="carousel-nav-btn",
+                        classes="page-btn",
                         disabled=(self._reviews_page <= 1),
                     ),
                     Static(
@@ -367,7 +367,7 @@ class ProfileView(VerticalScroll):
                     Button(
                         ">",
                         id="btn-prof-rev-next",
-                        classes="carousel-nav-btn",
+                        classes="page-btn",
                         disabled=(self._reviews_page >= total_pages),
                     ),
                     classes="pagination-bar",
@@ -502,7 +502,7 @@ class ProfileView(VerticalScroll):
                     f"Followers ({self._profile.followers_count})"
                 )
                 self._sync_action_buttons()
-            state.show_success(msg)
+            show_success_toast(self, msg)
         else:
             state.show_error(msg)
 
@@ -571,7 +571,7 @@ class ProfileView(VerticalScroll):
             session, movie_title, self._target_username
         )
         if ok:
-            state.show_success(msg)
+            show_success_toast(self, msg)
             self.load_profile(self._target_username)
         else:
             state.show_error(msg)

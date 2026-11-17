@@ -208,7 +208,7 @@ class EditProfileModal(BaseModal[Optional[UserSession]]):
 
         with Vertical(id="edit-profile-modal-card", classes="modal-card"):
             yield Static(
-                "[bold #58a6ff]✏ EDIT PROFILE INFORMATION[/]\n"
+                "[bold #58a6ff]EDIT PROFILE INFORMATION[/]\n"
                 "[dim]Update your MovieVault handle, email address, or profile photo.[/]"
             )
             yield Static("", id="edit-profile-feedback", classes="modal-feedback")

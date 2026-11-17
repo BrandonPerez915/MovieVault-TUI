@@ -16,5 +16,6 @@ class BaseModal(ModalScreen[T]):
     _dismiss_value: T = None
 
     def on_click(self, event: Click) -> None:
-        if event.widget is self:
+        if event.widget is self and self.is_current:
+            event.stop()
             self.dismiss(self._dismiss_value)

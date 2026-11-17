@@ -20,6 +20,7 @@ from textual.screen import Screen
 from textual.widgets import Button, Footer, Label, Select, Static, Switch
 
 from services.PosterService import CACHE_DIR, PosterService
+from services.SettingsService import SettingsService
 from tui.toast import show_info_toast, show_success_toast
 from tui.widgets.figlet_header import FigletHeader
 
@@ -41,14 +42,23 @@ class SettingsScreen(Screen[bool]):
         super().__init__()
         self._initial_posters = PosterService().enabled
         self._posters_changed = False
+        self._suppress_events = False
+        self._ready = False
+
+    def on_mount(self) -> None:
+        self.call_after_refresh(self._mark_ready)
+
+    def _mark_ready(self) -> None:
+        self._ready = True
 
     def compose(self) -> ComposeResult:
+        settings = SettingsService()
         theme_options = [
             (_format_theme_label(name), name)
             for name in sorted(self.app.available_themes.keys())
         ]
-        current_theme = self.app.theme
-        posters_enabled = PosterService().enabled
+        current_theme = settings.theme if settings.theme in self.app.available_themes else self.app.theme
+        posters_enabled = settings.posters_enabled
 
         yield Static(
             "[bold #58a6ff]⚙️ SETTINGS[/]",
@@ -92,20 +102,12 @@ class SettingsScreen(Screen[bool]):
                             )
                         with Horizontal(classes="settings-row"):
                             with Vertical(classes="settings-label-col"):
-                                yield Label("Compact Movie Cards", classes="settings-label")
-                                yield Static(
-                                    "[dim]Show denser movie grids with fewer metadata lines.[/]",
-                                    classes="settings-hint",
-                                )
-                            yield Switch(value=False, id="switch-compact-cards")
-                        with Horizontal(classes="settings-row"):
-                            with Vertical(classes="settings-label-col"):
                                 yield Label("ASCII Figlet Headers", classes="settings-label")
                                 yield Static(
                                     "[dim]Render large Figlet banners on main section headers.[/]",
                                     classes="settings-hint",
                                 )
-                            yield Switch(value=True, id="switch-figlet-headers")
+                            yield Switch(value=settings.figlet_headers, id="switch-figlet-headers")
 
                     # Section 2: Posters & Media
                     with Vertical(classes="settings-section"):
@@ -121,24 +123,6 @@ class SettingsScreen(Screen[bool]):
                                     classes="settings-hint",
                                 )
                             yield Switch(value=posters_enabled, id="switch-posters-enabled")
-                        with Horizontal(classes="settings-row"):
-                            with Vertical(classes="settings-label-col"):
-                                yield Label("Poster Resolution", classes="settings-label")
-                                yield Static(
-                                    "[dim]Preferred TMDB image size when downloading posters.[/]",
-                                    classes="settings-hint",
-                                )
-                            yield Select(
-                                [
-                                    ("Low (w154)", "w154"),
-                                    ("Medium (w185)", "w185"),
-                                    ("High (w342)", "w342"),
-                                ],
-                                value="w185",
-                                allow_blank=False,
-                                id="select-poster-quality",
-                                classes="settings-select",
-                            )
                         with Horizontal(classes="settings-row"):
                             with Vertical(classes="settings-label-col"):
                                 yield Label("Local Poster Cache", classes="settings-label")
@@ -173,7 +157,7 @@ class SettingsScreen(Screen[bool]):
                                     ("Explore", "tab-explore"),
                                     ("Profile", "tab-profile"),
                                 ],
-                                value="tab-home",
+                                value=settings.default_tab,
                                 allow_blank=False,
                                 id="select-default-tab",
                                 classes="settings-select",
@@ -191,19 +175,11 @@ class SettingsScreen(Screen[bool]):
                                     ("20 items", "20"),
                                     ("30 items", "30"),
                                 ],
-                                value="10",
+                                value=str(settings.page_size),
                                 allow_blank=False,
                                 id="select-page-size",
                                 classes="settings-select",
                             )
-                        with Horizontal(classes="settings-row"):
-                            with Vertical(classes="settings-label-col"):
-                                yield Label("Toast Notifications", classes="settings-label")
-                                yield Static(
-                                    "[dim]Display floating confirmation and status alerts.[/]",
-                                    classes="settings-hint",
-                                )
-                            yield Switch(value=True, id="switch-toast-notifications")
                         with Horizontal(classes="settings-row"):
                             with Vertical(classes="settings-label-col"):
                                 yield Label("Auto-enrich Catalog via TMDB", classes="settings-label")
@@ -211,7 +187,7 @@ class SettingsScreen(Screen[bool]):
                                     "[dim]Fetch missing movies from TMDB when local search has 0 matches.[/]",
                                     classes="settings-hint",
                                 )
-                            yield Switch(value=True, id="switch-tmdb-fallback")
+                            yield Switch(value=settings.tmdb_fallback, id="switch-tmdb-fallback")
 
                     # Section 4: Privacy & Account
                     with Vertical(classes="settings-section"):
@@ -226,7 +202,7 @@ class SettingsScreen(Screen[bool]):
                                     "[dim]Allow followers to see your recently watched movies in Explore.[/]",
                                     classes="settings-hint",
                                 )
-                            yield Switch(value=True, id="switch-public-activity")
+                            yield Switch(value=settings.public_activity, id="switch-public-activity")
                         with Horizontal(classes="settings-row"):
                             with Vertical(classes="settings-label-col"):
                                 yield Label("Remember Active Session", classes="settings-label")
@@ -234,7 +210,7 @@ class SettingsScreen(Screen[bool]):
                                     "[dim]Keep your signed-in account active between sessions.[/]",
                                     classes="settings-hint",
                                 )
-                            yield Switch(value=True, id="switch-remember-session")
+                            yield Switch(value=settings.remember_session, id="switch-remember-session")
 
                     with Horizontal(id="settings-actions-row"):
                         yield Button(
@@ -252,19 +228,78 @@ class SettingsScreen(Screen[bool]):
 
     @on(Select.Changed, "#select-app-theme")
     def _on_theme_changed(self, event: Select.Changed) -> None:
-        if event.value is Select.BLANK:
+        if not self._ready or self._suppress_events or event.value is Select.BLANK:
             return
         theme_name = str(event.value)
         if theme_name in self.app.available_themes and self.app.theme != theme_name:
             self.app.theme = theme_name
+            SettingsService().set("theme", theme_name)
             show_info_toast(self, f"Theme changed to {_format_theme_label(theme_name)}")
+
+    @on(Switch.Changed, "#switch-figlet-headers")
+    def _on_figlet_headers_toggled(self, event: Switch.Changed) -> None:
+        if not self._ready or self._suppress_events:
+            return
+        SettingsService().set("figlet_headers", bool(event.value))
+        self._posters_changed = True
+        self.query_one("#settings-figlet-header", FigletHeader).set_header(
+            "Settings",
+            subtitle="Customize appearance, poster rendering, navigation, and privacy.",
+        )
+        state = "enabled" if event.value else "disabled"
+        show_info_toast(self, f"ASCII Figlet headers {state}")
 
     @on(Switch.Changed, "#switch-posters-enabled")
     def _on_posters_toggled(self, event: Switch.Changed) -> None:
-        PosterService().set_enabled(bool(event.value))
+        if not self._ready or self._suppress_events:
+            return
+        enabled = bool(event.value)
+        PosterService().set_enabled(enabled)
+        SettingsService().set("posters_enabled", enabled)
         self._posters_changed = True
-        state = "enabled" if event.value else "disabled"
+        state = "enabled" if enabled else "disabled"
         show_info_toast(self, f"Poster rendering {state}")
+
+    @on(Select.Changed, "#select-default-tab")
+    def _on_default_tab_changed(self, event: Select.Changed) -> None:
+        if not self._ready or self._suppress_events or event.value is Select.BLANK:
+            return
+        SettingsService().set("default_tab", str(event.value))
+        show_info_toast(self, "Default landing tab updated")
+
+    @on(Select.Changed, "#select-page-size")
+    def _on_page_size_changed(self, event: Select.Changed) -> None:
+        if not self._ready or self._suppress_events or event.value is Select.BLANK:
+            return
+        SettingsService().set("page_size", int(str(event.value)))
+        show_info_toast(self, f"Results per page set to {event.value}")
+
+    @on(Switch.Changed, "#switch-tmdb-fallback")
+    def _on_tmdb_fallback_toggled(self, event: Switch.Changed) -> None:
+        if not self._ready or self._suppress_events:
+            return
+        SettingsService().set("tmdb_fallback", bool(event.value))
+        state = "enabled" if event.value else "disabled"
+        show_info_toast(self, f"TMDB auto-enrich {state}")
+
+    @on(Switch.Changed, "#switch-public-activity")
+    def _on_public_activity_toggled(self, event: Switch.Changed) -> None:
+        if not self._ready or self._suppress_events:
+            return
+        SettingsService().set("public_activity", bool(event.value))
+        state = "enabled" if event.value else "disabled"
+        show_info_toast(self, f"Public watch activity {state}")
+
+    @on(Switch.Changed, "#switch-remember-session")
+    def _on_remember_session_toggled(self, event: Switch.Changed) -> None:
+        if not self._ready or self._suppress_events:
+            return
+        enabled = bool(event.value)
+        SettingsService().set("remember_session", enabled)
+        if not enabled:
+            SettingsService().set("last_username", "")
+        state = "enabled" if enabled else "disabled"
+        show_info_toast(self, f"Remember session {state}")
 
     @on(Button.Pressed, "#btn-clear-poster-cache")
     def _on_clear_cache(self) -> None:
@@ -285,19 +320,25 @@ class SettingsScreen(Screen[bool]):
 
     @on(Button.Pressed, "#btn-settings-reset")
     def action_reset_defaults(self) -> None:
-        self.app.theme = "textual-dark"
-        self.query_one("#select-app-theme", Select).value = "textual-dark"
-        PosterService().set_enabled(True)
-        self.query_one("#switch-posters-enabled", Switch).value = True
-        self.query_one("#switch-compact-cards", Switch).value = False
-        self.query_one("#switch-figlet-headers", Switch).value = True
-        self.query_one("#select-poster-quality", Select).value = "w185"
-        self.query_one("#select-default-tab", Select).value = "tab-home"
-        self.query_one("#select-page-size", Select).value = "10"
-        self.query_one("#switch-toast-notifications", Switch).value = True
-        self.query_one("#switch-tmdb-fallback", Switch).value = True
-        self.query_one("#switch-public-activity", Switch).value = True
-        self.query_one("#switch-remember-session", Switch).value = True
+        SettingsService().reset_defaults()
+        self._suppress_events = True
+        try:
+            self.app.theme = "textual-dark"
+            self.query_one("#select-app-theme", Select).value = "textual-dark"
+            PosterService().set_enabled(True)
+            self.query_one("#switch-posters-enabled", Switch).value = True
+            self.query_one("#switch-figlet-headers", Switch).value = True
+            self.query_one("#select-default-tab", Select).value = "tab-home"
+            self.query_one("#select-page-size", Select).value = "10"
+            self.query_one("#switch-tmdb-fallback", Switch).value = True
+            self.query_one("#switch-public-activity", Switch).value = True
+            self.query_one("#switch-remember-session", Switch).value = True
+        finally:
+            self._suppress_events = False
+        self.query_one("#settings-figlet-header", FigletHeader).set_header(
+            "Settings",
+            subtitle="Customize appearance, poster rendering, navigation, and privacy.",
+        )
         self._posters_changed = True
         show_success_toast(self, "Settings restored to defaults")
 

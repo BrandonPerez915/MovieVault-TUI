@@ -7,6 +7,8 @@ from rich.text import Text
 from textual.widgets import Static
 import pyfiglet
 
+from services.SettingsService import SettingsService
+
 
 def render_figlet_markup(
     text: str,
@@ -20,7 +22,8 @@ def render_figlet_markup(
     """Renders `text` with pyfiglet as a Rich Text object, optionally appending a dim subtitle."""
     clean_text = (text or "").strip()
     use_plain = (
-        (max_plain_len is not None and len(clean_text) > max_plain_len)
+        not SettingsService().figlet_headers
+        or (max_plain_len is not None and len(clean_text) > max_plain_len)
         or (
             single_word_max_len is not None
             and (len(clean_text.split()) != 1 or len(clean_text) > single_word_max_len)
